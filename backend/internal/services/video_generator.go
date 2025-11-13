@@ -1099,18 +1099,34 @@ func (vg *VideoGenerator) GenerateWithSynthesia(productImagePath, customScript s
 // pollDIDTask polls D-ID for video generation completion
 func (vg *VideoGenerator) pollDIDTask(talkID string) (string, error) {
 	apiURL := fmt.Sprintf("https://api.d-id.com/talks/%s", talkID)
+	// Use same authorization as initial API call
+	authHeader := "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL"
 
 	for i := 0; i < 60; i++ {
 		time.Sleep(5 * time.Second)
 
 		req, _ := http.NewRequest("GET", apiURL, nil)
-		// D-ID API - EXACT key from Postman (copied from cURL line 3)
-		req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
+		req.Header.Set("Authorization", authHeader)
 
 		fmt.Printf("Polling D-ID task %d/60: %s\n", i+1, talkID)
 
 		resp, err := vg.client.Do(req)
 		if err != nil {
+			fmt.Printf("Poll request error: %v\n", err)
+			continue
+		}
+
+		// Check for authentication errors
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return "", fmt.Errorf("D-ID authentication failed (%s): %s", resp.Status, string(bodyBytes))
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			fmt.Printf("Poll HTTP error (%s): %s\n", resp.Status, string(bodyBytes))
 			continue
 		}
 
