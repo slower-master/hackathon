@@ -109,7 +109,7 @@ func (vg *VideoGenerator) uploadToDID(imagePath string) (string, error) {
 
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
+	req.Header.Set("Authorization", "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi")
 
 	resp, err := vg.client.Do(req)
 	if err != nil {
@@ -226,9 +226,11 @@ func (vg *VideoGenerator) generateProductVideoWithDID(productImagePath, productV
 
 	req.Header.Set("Content-Type", "application/json")
 	// D-ID API key (using same auth as other D-ID calls)
-	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
+	req.Header.Set("Authorization", "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi")
 
 	fmt.Printf("📤 Calling D-ID API for product video...\n")
+	fmt.Printf("   Source URL: %s\n", sourceURL)
+	fmt.Printf("   Script length: %d characters\n", len(videoScript))
 
 	resp, err := vg.client.Do(req)
 	if err != nil {
@@ -239,6 +241,7 @@ func (vg *VideoGenerator) generateProductVideoWithDID(productImagePath, productV
 	bodyBytes, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		fmt.Printf("❌ D-ID API error response: %s\n", string(bodyBytes))
 		return "", fmt.Errorf("D-ID API error (%s): %s", resp.Status, string(bodyBytes))
 	}
 
@@ -250,10 +253,12 @@ func (vg *VideoGenerator) generateProductVideoWithDID(productImagePath, productV
 	// Get task ID for polling
 	talkID, ok := result["id"].(string)
 	if !ok {
+		fmt.Printf("❌ Unexpected D-ID response: %+v\n", result)
 		return "", fmt.Errorf("no task ID in D-ID response: %v", result)
 	}
 
 	fmt.Printf("✅ D-ID task created: %s\n", talkID)
+	fmt.Printf("   Task status: %v\n", result["status"])
 	fmt.Printf("⏳ Waiting for product video generation...\n")
 
 	// Poll for completion
@@ -871,7 +876,7 @@ func (vg *VideoGenerator) generateAvatarOnly(personMediaPath, customScript strin
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
+	req.Header.Set("Authorization", "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi")
 
 	fmt.Printf("📤 Calling D-ID API for avatar video...\n")
 
@@ -1007,7 +1012,7 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 	req.Header.Set("User-Agent", "curl/7.88.1")
 	req.Header.Set("Accept", "*/*")
 	// D-ID API - EXACT key from Postman (copied from cURL line 3)
-	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
+	req.Header.Set("Authorization", "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi")
 
 	// Log curl equivalent command
 	fmt.Printf("Curl equivalent:\n")
@@ -1100,7 +1105,7 @@ func (vg *VideoGenerator) GenerateWithSynthesia(productImagePath, customScript s
 func (vg *VideoGenerator) pollDIDTask(talkID string) (string, error) {
 	apiURL := fmt.Sprintf("https://api.d-id.com/talks/%s", talkID)
 	// Use same authorization as initial API call
-	authHeader := "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL"
+	authHeader := "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi"
 
 	for i := 0; i < 60; i++ {
 		time.Sleep(5 * time.Second)
@@ -1162,13 +1167,45 @@ func (vg *VideoGenerator) pollDIDTask(talkID string) (string, error) {
 			}
 			return vg.downloadVideo(videoURL)
 		} else if status == "error" {
+			// Log full error response for debugging
+			fmt.Printf("❌ D-ID task failed. Full response: %+v\n", result)
+
+			// Try to extract detailed error information
 			errMsg := "video generation failed"
+			errDetails := []string{}
+
+			// Check for error object
 			if errField, ok := result["error"].(map[string]interface{}); ok {
 				if msg, ok := errField["message"].(string); ok {
 					errMsg = msg
 				}
+				if code, ok := errField["code"].(string); ok {
+					errDetails = append(errDetails, fmt.Sprintf("code: %s", code))
+				}
+				if details, ok := errField["details"].(string); ok {
+					errDetails = append(errDetails, fmt.Sprintf("details: %s", details))
+				}
 			}
-			return "", fmt.Errorf("D-ID error: %s", errMsg)
+
+			// Check top-level error fields
+			if msg, ok := result["message"].(string); ok && errMsg == "video generation failed" {
+				errMsg = msg
+			}
+			if failure, ok := result["failure"].(string); ok {
+				errDetails = append(errDetails, fmt.Sprintf("failure: %s", failure))
+			}
+			if reason, ok := result["reason"].(string); ok {
+				errDetails = append(errDetails, fmt.Sprintf("reason: %s", reason))
+			}
+
+			// Build comprehensive error message
+			fullErrMsg := errMsg
+			if len(errDetails) > 0 {
+				fullErrMsg = fmt.Sprintf("%s (%s)", errMsg, strings.Join(errDetails, ", "))
+			}
+
+			// Include task ID in error for debugging
+			return "", fmt.Errorf("D-ID error (task %s): %s", talkID, fullErrMsg)
 		}
 	}
 
