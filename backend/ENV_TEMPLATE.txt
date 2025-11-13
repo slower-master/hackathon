@@ -1,0 +1,80 @@
+# ============================================
+# FULL AI PIPELINE CONFIGURATION
+# Copy this to .env and fill in your API keys
+# ============================================
+
+# Backend Configuration
+PORT=8080
+DATABASE_PATH=./data/app.db
+UPLOAD_PATH=./uploads
+GENERATED_VIDEO_PATH=./generated/videos
+WEBSITE_PATH=./generated/websites
+
+# ============================================
+# AI PROVIDER CONFIGURATION
+# ============================================
+
+# Choose AI Provider: "did" (recommended)
+AI_PROVIDER=did
+
+# ============================================
+# FULL AI PIPELINE TOGGLE
+# ============================================
+
+# Enable Full AI Pipeline (D-ID + RunwayML + Shotstack)
+# Set to "true" for: Product video + Avatar composite
+# Set to "false" for: Avatar only (standard D-ID)
+USE_FULL_AI_PIPELINE=true
+
+# ============================================
+# API KEYS (REQUIRED)
+# ============================================
+
+# D-ID API Key (REQUIRED - You already have this)
+# Get from: https://studio.d-id.com/account-settings
+# Format: Base64 encoded "email:api_secret"
+AI_API_KEY=your_did_api_key_here
+
+# RunwayML API Key (REQUIRED if USE_FULL_AI_PIPELINE=true)
+# Get from: https://app.runwayml.com/account/secrets
+# Click "Create API Secret" and copy the key
+RUNWAYML_API_KEY=your_runwayml_api_key_here
+
+# Shotstack API Key (REQUIRED if USE_FULL_AI_PIPELINE=true)
+# Get from: https://dashboard.shotstack.io/
+# Copy from dashboard (starts with "stage_" or "prod_")
+SHOTSTACK_API_KEY=your_shotstack_api_key_here
+
+# ============================================
+# QUICK START
+# ============================================
+
+# 1. Copy this file to .env
+# 2. Fill in your API keys above
+# 3. Run: ./START_FULL_PIPELINE.sh
+# 4. Test: ./TEST_VIDEO_GENERATION.sh
+
+# ============================================
+# API KEY LINKS
+# ============================================
+
+# D-ID: https://studio.d-id.com/account-settings
+# RunwayML: https://app.runwayml.com/account/secrets
+# Shotstack: https://dashboard.shotstack.io/
+
+# ============================================
+# COST BREAKDOWN (Per Video)
+# ============================================
+
+# Standard Mode (USE_FULL_AI_PIPELINE=false):
+#   - D-ID: $0.30
+#   - Total: $0.30
+#   - Time: ~30 seconds
+
+# Full AI Pipeline (USE_FULL_AI_PIPELINE=true):
+#   - D-ID: $0.30
+#   - RunwayML: $0.25
+#   - Shotstack: $0.10
+#   - Total: $0.65
+#   - Time: ~2-3 minutes
+
