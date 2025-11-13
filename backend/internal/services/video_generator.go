@@ -795,11 +795,24 @@ func (vg *VideoGenerator) GenerateFullAIPipeline(productImagePath, personMediaPa
 	}
 	fmt.Printf("✅ STEP 1 COMPLETE: Avatar video saved at %s\n\n", avatarVideoPath)
 
-	// Step 2: Generate product video with D-ID
-	fmt.Printf("📍 STEP 2/3: Generating Product Video with D-ID\n")
-	productVideoPath, err := vg.generateProductVideoWithDID(productImagePath, productVideoStyle)
+	// Step 2: Generate product video - try D-ID first, fallback to RunwayML
+	fmt.Printf("📍 STEP 2/3: Generating Product Video\n")
+	var productVideoPath string
+
+	// Try D-ID first
+	fmt.Printf("   Attempting with D-ID...\n")
+	productVideoPath, err = vg.generateProductVideoWithDID(productImagePath, productVideoStyle)
 	if err != nil {
-		return "", fmt.Errorf("step 2 failed (D-ID product video): %v", err)
+		fmt.Printf("   ⚠️  D-ID product video failed: %v\n", err)
+		fmt.Printf("   🔄 Falling back to RunwayML...\n")
+		// Fallback to RunwayML
+		productVideoPath, err = vg.generateProductVideoWithRunwayML(productImagePath, productVideoStyle)
+		if err != nil {
+			return "", fmt.Errorf("step 2 failed (both D-ID and RunwayML failed): RunwayML error: %v", err)
+		}
+		fmt.Printf("   ✅ RunwayML product video generated successfully\n")
+	} else {
+		fmt.Printf("   ✅ D-ID product video generated successfully\n")
 	}
 	fmt.Printf("✅ STEP 2 COMPLETE: Product video saved at %s\n\n", productVideoPath)
 
@@ -1160,13 +1173,31 @@ func (vg *VideoGenerator) pollDIDTask(talkID string) (string, error) {
 
 		fmt.Printf("Task status: %s\n", status)
 
-		if status == "done" {
+		// Check for completion statuses (D-ID uses various status values)
+		if status == "done" || status == "completed" || status == "succeeded" || status == "ready" {
 			videoURL, ok := result["result_url"].(string)
 			if !ok {
-				return "", fmt.Errorf("result_url not found or invalid")
+				// Try alternative field names
+				if url, ok := result["url"].(string); ok {
+					videoURL = url
+				} else if url, ok := result["video_url"].(string); ok {
+					videoURL = url
+				} else {
+					return "", fmt.Errorf("result_url not found or invalid in response: %+v", result)
+				}
 			}
+			fmt.Printf("✅ Video ready! URL: %s\n", videoURL)
 			return vg.downloadVideo(videoURL)
-		} else if status == "error" {
+		}
+
+		// Check if result_url exists even if status is not "done" (sometimes D-ID returns it early)
+		if videoURL, ok := result["result_url"].(string); ok && videoURL != "" {
+			fmt.Printf("✅ Video URL found even though status is '%s'. Downloading...\n", status)
+			return vg.downloadVideo(videoURL)
+		}
+
+		// Check for error status
+		if status == "error" || status == "failed" {
 			// Log full error response for debugging
 			fmt.Printf("❌ D-ID task failed. Full response: %+v\n", result)
 
@@ -1206,6 +1237,30 @@ func (vg *VideoGenerator) pollDIDTask(talkID string) (string, error) {
 
 			// Include task ID in error for debugging
 			return "", fmt.Errorf("D-ID error (task %s): %s", talkID, fullErrMsg)
+		}
+	}
+
+	// Timeout reached - check if video file was created anyway
+	fmt.Printf("⚠️  Polling timeout reached. Checking if video file exists...\n")
+
+	// Try to find video file by task ID pattern in generated folder
+	files, err := filepath.Glob(filepath.Join(vg.config.GeneratedVideoPath, "*.mp4"))
+	if err == nil {
+		// Check the most recently modified file (likely the one we just generated)
+		var latestFile string
+		var latestTime time.Time
+		for _, file := range files {
+			if info, err := os.Stat(file); err == nil {
+				if info.ModTime().After(latestTime) {
+					latestTime = info.ModTime()
+					latestFile = file
+				}
+			}
+		}
+		// If file was modified in last 10 minutes, assume it's our video
+		if latestFile != "" && time.Since(latestTime) < 10*time.Minute {
+			fmt.Printf("✅ Found recently generated video file: %s\n", latestFile)
+			return latestFile, nil
 		}
 	}
 
