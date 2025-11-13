@@ -52,3 +52,4 @@ echo "Check which method works (look for 'id' or 'created_at' in response)"
 echo "If all show 'Unauthorized', the API key itself is invalid/expired."
 
 
+

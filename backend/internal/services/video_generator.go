@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
-	"image/png"
 	_ "image/jpeg" // JPEG decoder
+	"image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -118,7 +118,7 @@ func (vg *VideoGenerator) uploadToDID(imagePath string) (string, error) {
 	defer resp.Body.Close()
 
 	bodyBytes, _ := io.ReadAll(resp.Body)
-	
+
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("D-ID upload failed (%s): %s", resp.Status, string(bodyBytes))
 	}
@@ -155,16 +155,139 @@ func (vg *VideoGenerator) generateMarketingScript(customScript string) string {
 	return "Hello! Welcome to our amazing product showcase. This innovative solution is designed specifically for you, combining quality, style, and functionality. It's perfect for anyone looking to upgrade their experience. Join thousands of satisfied customers who have already made the smart choice. Order now and transform the way you live. Don't wait - this is your chance to experience excellence!"
 }
 
+// generateProductVideoWithDID generates a product showcase video using D-ID API
+// Uses the product image as the source and creates a talking video presentation
+func (vg *VideoGenerator) generateProductVideoWithDID(productImagePath, productVideoStyle string) (string, error) {
+	fmt.Printf("\n🎬 Generating product video with D-ID...\n")
+
+	// Upload product image to D-ID
+	var sourceURL string
+	if productImagePath != "" {
+		fmt.Printf("📸 Uploading product image to D-ID...\n")
+		uploadedURL, err := vg.uploadToDID(productImagePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to upload product image to D-ID: %v", err)
+		}
+		sourceURL = uploadedURL
+		fmt.Printf("✅ Product image uploaded: %s\n", sourceURL)
+	} else {
+		return "", fmt.Errorf("product image path is required")
+	}
+
+	// Generate product presentation script based on style
+	var videoScript string
+	switch productVideoStyle {
+	case "rotation":
+		videoScript = "Welcome to our product showcase! This amazing product features a stunning design with premium quality. Watch as we explore its elegant features and innovative design. Perfect for your needs, this product combines style and functionality in one beautiful package."
+	case "zoom":
+		videoScript = "Take a closer look at this incredible product! Every detail has been carefully crafted to perfection. From its sleek exterior to its innovative features, this product is designed to impress. Experience the quality and craftsmanship that sets it apart."
+	case "pan":
+		videoScript = "Let me show you this remarkable product from every angle. Notice the attention to detail and premium materials. This product represents the perfect blend of form and function, designed to exceed your expectations."
+	case "reveal":
+		videoScript = "Prepare to be amazed by this extraordinary product! With cutting-edge technology and elegant design, this product is truly something special. Discover why it's the perfect choice for you."
+	case "auto":
+		fallthrough
+	default:
+		videoScript = "Introducing our premium product! This exceptional item combines innovative design with outstanding quality. Perfect for those who demand the best, this product delivers on every promise. Experience the difference that quality makes."
+	}
+
+	fmt.Printf("📹 Product video style: %s\n", productVideoStyle)
+	fmt.Printf("🎬 Script: %s\n", videoScript)
+
+	// D-ID API endpoint
+	apiURL := "https://api.d-id.com/talks"
+
+	// Create script payload
+	script := map[string]interface{}{
+		"type":  "text",
+		"input": videoScript,
+		"provider": map[string]interface{}{
+			"type":     "microsoft",
+			"voice_id": "en-US-JennyNeural", // Professional, clear voice
+		},
+	}
+
+	payload := map[string]interface{}{
+		"source_url": sourceURL,
+		"script":     script,
+		"config": map[string]interface{}{
+			"fluent":    true,
+			"pad_audio": 0,
+			"stitch":    true, // Better video quality
+		},
+	}
+
+	payloadBytes, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return "", fmt.Errorf("failed to create D-ID request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	// D-ID API key (using same auth as other D-ID calls)
+	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
+
+	fmt.Printf("📤 Calling D-ID API for product video...\n")
+
+	resp, err := vg.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("D-ID API request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("D-ID API error (%s): %s", resp.Status, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return "", fmt.Errorf("failed to parse D-ID response: %v", err)
+	}
+
+	// Get task ID for polling
+	talkID, ok := result["id"].(string)
+	if !ok {
+		return "", fmt.Errorf("no task ID in D-ID response: %v", result)
+	}
+
+	fmt.Printf("✅ D-ID task created: %s\n", talkID)
+	fmt.Printf("⏳ Waiting for product video generation...\n")
+
+	// Poll for completion
+	return vg.pollDIDTask(talkID)
+}
+
 // generateProductVideoWithRunwayML generates an animated product showcase video from a static image
 // productVideoStyle can be: "rotation", "zoom", "pan", "reveal", "auto" (auto-detects best style)
 func (vg *VideoGenerator) generateProductVideoWithRunwayML(productImagePath, productVideoStyle string) (string, error) {
 	fmt.Printf("\n🎬 Generating product video with RunwayML Gen-3...\n")
-	
-	// Upload product image to D-ID first (we can reuse it)
-	productImageURL, err := vg.uploadToDID(productImagePath)
+
+	// Read and encode image as base64 data URI (per RunwayML docs)
+	imageData, err := os.ReadFile(productImagePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to upload product image: %v", err)
+		return "", fmt.Errorf("failed to read product image: %v", err)
 	}
+
+	base64Image := base64.StdEncoding.EncodeToString(imageData)
+
+	// Detect image MIME type
+	ext := strings.ToLower(filepath.Ext(productImagePath))
+	mimeType := "image/png"
+	switch ext {
+	case ".jpg", ".jpeg":
+		mimeType = "image/jpeg"
+	case ".png":
+		mimeType = "image/png"
+	case ".webp":
+		mimeType = "image/webp"
+	}
+
+	// Create data URI (format: data:image/png;base64,...)
+	dataURI := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
+	fmt.Printf("📸 Image encoded as data URI (%d bytes)\n", len(imageData))
 
 	// Determine product video style and prompt
 	var promptText string
@@ -192,17 +315,17 @@ func (vg *VideoGenerator) generateProductVideoWithRunwayML(productImagePath, pro
 	// RunwayML Gen-3 API endpoint
 	apiURL := "https://api.dev.runwayml.com/v1/image_to_video"
 
+	// Create API payload (per RunwayML docs: https://docs.dev.runwayml.com/guides/using-the-api)
 	payload := map[string]interface{}{
-		"promptImage":    productImageURL,
-		"model":          "gen3a_turbo",
-		"promptText":     promptText,
-		"duration":       5,  // 5 seconds
-		"ratio":          "16:9",
-		"watermark":      false,
+		"promptImage": dataURI, // Base64 data URI format
+		"model":       "gen3a_turbo",
+		"promptText":  promptText,
+		"duration":    5,
+		"ratio":       "1280:768", // Valid options: "768:1280" (portrait) or "1280:768" (landscape)
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
-	
+
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return "", fmt.Errorf("failed to create RunwayML request: %v", err)
@@ -219,7 +342,7 @@ func (vg *VideoGenerator) generateProductVideoWithRunwayML(productImagePath, pro
 	req.Header.Set("X-Runway-Version", "2024-11-06")
 
 	fmt.Printf("📤 Calling RunwayML API...\n")
-	
+
 	resp, err := vg.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("RunwayML API request failed: %v", err)
@@ -285,7 +408,7 @@ func (vg *VideoGenerator) pollRunwayMLTask(taskID string) (string, error) {
 			if !ok || len(outputs) == 0 {
 				return "", fmt.Errorf("no output in RunwayML response")
 			}
-			
+
 			videoURL, ok := outputs[0].(string)
 			if !ok {
 				return "", fmt.Errorf("invalid video URL format")
@@ -326,7 +449,7 @@ func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarV
 
 	// Determine layout based on parameter
 	var tracks []interface{}
-	
+
 	if layout == "avatar_main" {
 		// Avatar as main (fullscreen), Product as overlay
 		fmt.Printf("📐 Using layout: Avatar fullscreen + Product overlay\n")
@@ -631,9 +754,9 @@ func (vg *VideoGenerator) GenerateWithRunwayML(productImagePath, personMediaPath
 
 // GenerateFullAIPipeline orchestrates the complete AI video generation pipeline
 // Step 1: D-ID → Generate talking avatar
-// Step 2: RunwayML → Generate product showcase video
+// Step 2: D-ID → Generate product showcase video
 // Step 3: Shotstack → Composite both videos
-// 
+//
 // Parameters:
 //   - productImagePath: Path to product image
 //   - personMediaPath: Path to presenter image
@@ -667,11 +790,11 @@ func (vg *VideoGenerator) GenerateFullAIPipeline(productImagePath, personMediaPa
 	}
 	fmt.Printf("✅ STEP 1 COMPLETE: Avatar video saved at %s\n\n", avatarVideoPath)
 
-	// Step 2: Generate product video with RunwayML
-	fmt.Printf("📍 STEP 2/3: Generating Product Video with RunwayML Gen-3\n")
-	productVideoPath, err := vg.generateProductVideoWithRunwayML(productImagePath, productVideoStyle)
+	// Step 2: Generate product video with D-ID
+	fmt.Printf("📍 STEP 2/3: Generating Product Video with D-ID\n")
+	productVideoPath, err := vg.generateProductVideoWithDID(productImagePath, productVideoStyle)
 	if err != nil {
-		return "", fmt.Errorf("step 2 failed (RunwayML product video): %v", err)
+		return "", fmt.Errorf("step 2 failed (D-ID product video): %v", err)
 	}
 	fmt.Printf("✅ STEP 2 COMPLETE: Product video saved at %s\n\n", productVideoPath)
 
@@ -693,18 +816,93 @@ func (vg *VideoGenerator) GenerateFullAIPipeline(productImagePath, personMediaPa
 
 // generateAvatarOnly generates just the talking avatar video (used in pipeline)
 func (vg *VideoGenerator) generateAvatarOnly(personMediaPath, customScript string) (string, error) {
-	// TEMPORARY: Skip D-ID API to save credits, use existing video
-	fmt.Printf("⚡ SKIPPING D-ID (using cached video to save credits)\n")
-	
-	existingVideoPath := filepath.Join(vg.config.GeneratedVideoPath, "ef079c6a-8f3b-437e-9514-18cb706ea9da.mp4")
-	
-	// Check if the video exists
-	if _, err := os.Stat(existingVideoPath); err != nil {
-		return "", fmt.Errorf("cached D-ID video not found: %v", err)
+	fmt.Printf("🎬 Generating talking avatar with D-ID API...\n")
+
+	apiURL := "https://api.d-id.com/talks"
+
+	// Upload person/presenter image to D-ID for public URL
+	var sourceURL string
+	if personMediaPath != "" && (strings.HasSuffix(strings.ToLower(personMediaPath), ".png") ||
+		strings.HasSuffix(strings.ToLower(personMediaPath), ".jpg") ||
+		strings.HasSuffix(strings.ToLower(personMediaPath), ".jpeg")) {
+		fmt.Printf("📸 Uploading presenter image to D-ID...\n")
+		uploadedURL, err := vg.uploadToDID(personMediaPath)
+		if err != nil {
+			fmt.Printf("⚠️  D-ID upload failed: %v. Using default presenter.\n", err)
+			sourceURL = "https://create-images-results.d-id.com/api_docs/assets/noelle.jpeg"
+		} else {
+			sourceURL = uploadedURL
+			fmt.Printf("✅ Using custom presenter: %s\n", sourceURL)
+		}
+	} else {
+		fmt.Printf("📝 Using D-ID default presenter\n")
+		sourceURL = "https://create-images-results.d-id.com/api_docs/assets/noelle.jpeg"
 	}
-	
-	fmt.Printf("✅ Using cached D-ID video: %s\n", existingVideoPath)
-	return existingVideoPath, nil
+
+	// Generate enhanced marketing script
+	videoScript := vg.generateMarketingScript(customScript)
+	fmt.Printf("🎬 Video Script:\n%s\n\n", videoScript)
+
+	// Script for the video with optimized settings
+	script := map[string]interface{}{
+		"type":  "text",
+		"input": videoScript,
+		"provider": map[string]interface{}{
+			"type":     "microsoft",
+			"voice_id": "en-US-JennyNeural", // Professional, clear voice
+		},
+	}
+
+	payload := map[string]interface{}{
+		"source_url": sourceURL,
+		"script":     script,
+		"config": map[string]interface{}{
+			"fluent":    true,
+			"pad_audio": 0,
+			"stitch":    true, // Better video quality
+		},
+	}
+
+	payloadBytes, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return "", fmt.Errorf("failed to create D-ID request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
+
+	fmt.Printf("📤 Calling D-ID API for avatar video...\n")
+
+	resp, err := vg.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("D-ID API request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("D-ID API error (%s): %s", resp.Status, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return "", fmt.Errorf("failed to parse D-ID response: %v", err)
+	}
+
+	// Get task ID for polling
+	talkID, ok := result["id"].(string)
+	if !ok {
+		return "", fmt.Errorf("no task ID in D-ID response: %v", result)
+	}
+
+	fmt.Printf("✅ D-ID task created: %s\n", talkID)
+	fmt.Printf("⏳ Waiting for avatar video generation...\n")
+
+	// Poll for completion
+	return vg.pollDIDTask(talkID)
 }
 
 // GenerateWithDID generates video using D-ID API (Talking Head)
@@ -727,9 +925,9 @@ func (vg *VideoGenerator) GenerateWithDID(productImagePath, personMediaPath, cus
 func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPath, customScript string) (string, error) {
 	// D-ID API integration for talking head videos
 	// https://docs.d-id.com/
-	
+
 	apiURL := "https://api.d-id.com/talks"
-	
+
 	// Upload person/presenter image to D-ID for public URL
 	var sourceURL string
 	if personMediaPath != "" && (strings.HasSuffix(strings.ToLower(personMediaPath), ".png") ||
@@ -748,7 +946,7 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 		fmt.Printf("📝 Using D-ID default presenter\n")
 		sourceURL = "https://create-images-results.d-id.com/api_docs/assets/noelle.jpeg"
 	}
-	
+
 	// Upload product image to D-ID (for future use - could be overlaid or used in multi-shot videos)
 	var productImageURL string
 	if productImagePath != "" {
@@ -761,17 +959,17 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 			fmt.Printf("✅ Product image available at: %s\n", productImageURL)
 		}
 	}
-	
+
 	// Generate enhanced marketing script
 	videoScript := vg.generateMarketingScript(customScript)
-	
+
 	// Add product details if available
 	if productImageURL != "" {
 		videoScript += " You can see the product details and more at our website. Check out the visuals and features that make this product stand out from the rest!"
 	}
-	
+
 	fmt.Printf("\n🎬 Video Script:\n%s\n\n", videoScript)
-	
+
 	// Script for the video with optimized settings
 	script := map[string]interface{}{
 		"type":  "text",
@@ -781,7 +979,7 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 			"voice_id": "en-US-JennyNeural", // Professional, clear voice
 		},
 	}
-	
+
 	payload := map[string]interface{}{
 		"source_url": sourceURL,
 		"script":     script,
@@ -793,13 +991,13 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
-	
+
 	// Log the curl command for debugging
 	fmt.Printf("\n=== D-ID API Request ===\n")
 	fmt.Printf("URL: %s\n", apiURL)
 	fmt.Printf("Method: POST\n")
 	fmt.Printf("Payload (first 200 chars): %s...\n", string(payloadBytes)[:min(200, len(payloadBytes))])
-	
+
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return "", err
@@ -810,7 +1008,7 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 	req.Header.Set("Accept", "*/*")
 	// D-ID API - EXACT key from Postman (copied from cURL line 3)
 	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
-	
+
 	// Log curl equivalent command
 	fmt.Printf("Curl equivalent:\n")
 	fmt.Printf("curl -X POST '%s' \\\n", apiURL)
@@ -824,19 +1022,19 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 		return "", fmt.Errorf("failed to call D-ID API: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// Log response details
 	fmt.Printf("=== D-ID API Response ===\n")
 	fmt.Printf("Status: %s\n", resp.Status)
 	fmt.Printf("Status Code: %d\n", resp.StatusCode)
-	
+
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		fmt.Printf("Error Body: %s\n", string(body))
 		fmt.Printf("=====================\n\n")
 		return "", fmt.Errorf("D-ID API error: %s - %s", resp.Status, string(body))
 	}
-	
+
 	fmt.Printf("Success!\n")
 	fmt.Printf("=====================\n\n")
 
@@ -908,7 +1106,7 @@ func (vg *VideoGenerator) pollDIDTask(talkID string) (string, error) {
 		req, _ := http.NewRequest("GET", apiURL, nil)
 		// D-ID API - EXACT key from Postman (copied from cURL line 3)
 		req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:DEGE6f5zBPjimAmsqg0oL")
-		
+
 		fmt.Printf("Polling D-ID task %d/60: %s\n", i+1, talkID)
 
 		resp, err := vg.client.Do(req)

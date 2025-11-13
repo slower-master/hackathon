@@ -96,3 +96,4 @@ cd /Users/slowermaster/DEALSHARE/hacathon/backend
 - If running in background, check: `tail -f backend/backend.log`
 
 
+
