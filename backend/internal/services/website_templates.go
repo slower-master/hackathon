@@ -6,22 +6,14 @@ import (
 )
 
 // getDefaultFeatures returns default features if Gemini fails
+// Updated to be more appropriate for namkeen/snacks
 func getDefaultFeatures() []map[string]string {
 	return []map[string]string{
-		{"icon": "🚀", "title": "Lightning Fast", "description": "Experience unparalleled speed and efficiency that transforms your workflow instantly."},
-		{"icon": "💎", "title": "Premium Quality", "description": "Built with the finest materials and cutting-edge technology for lasting excellence."},
-		{"icon": "🔒", "title": "Secure & Reliable", "description": "Your data and privacy are protected with enterprise-grade security measures."},
-		{"icon": "⚡", "title": "Easy to Use", "description": "Intuitive design that anyone can master in minutes, no learning curve required."},
+		{"icon": "🌾", "title": "100% Natural Ingredients", "description": "Made from premium quality ingredients with no artificial flavors or preservatives for pure, authentic taste."},
+		{"icon": "😋", "title": "Irresistibly Delicious", "description": "Perfectly seasoned with traditional spices that create an unforgettable burst of flavor in every bite."},
+		{"icon": "✨", "title": "Fresh & Crunchy", "description": "Carefully crafted to maintain optimal crunchiness and freshness in every pack you open."},
+		{"icon": "🎯", "title": "Perfect for Every Occasion", "description": "Ideal for tea-time snacking, parties, or whenever you crave something tasty and satisfying."},
 	}
-}
-
-// getDefaultFeature returns a default feature by index
-func getDefaultFeature(index int) map[string]string {
-	defaults := getDefaultFeatures()
-	if index < len(defaults) {
-		return defaults[index]
-	}
-	return map[string]string{"icon": "✨", "title": "Feature", "description": "Experience the difference."}
 }
 
 // MarketingWebsiteTemplate generates professional marketing website HTML
@@ -32,6 +24,49 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
 	if productDescription == "" {
 		productDescription = "Discover the future of innovation with our cutting-edge product."
 	}
+	if len(features) == 0 {
+		features = getDefaultFeatures()
+	}
+
+	// Generate features HTML
+	featuresHTML := ""
+	for _, feature := range features {
+		icon := feature["icon"]
+		if icon == "" {
+			icon = "✨"
+		}
+		title := feature["title"]
+		if title == "" {
+			title = "Feature"
+		}
+		description := feature["description"]
+		if description == "" {
+			description = "Experience the difference."
+		}
+		featuresHTML += fmt.Sprintf(`
+                <div class="feature-card">
+                    <div class="feature-icon">%s</div>
+                    <h3>%s</h3>
+                    <p>%s</p>
+                </div>`, icon, title, description)
+	}
+
+	// Generate video HTML
+	videoHTML := ""
+	if videoURL != "" {
+		videoHTML = fmt.Sprintf(`
+                <video controls class="promo-video" poster="%s">
+                    <source src="%s" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>`, productImageURL, videoURL)
+	} else {
+		videoHTML = `
+                <div class="video-placeholder">
+                    <p>🎬 Video coming soon...</p>
+                </div>`
+	}
+
+	currentYear := time.Now().Year()
 
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
@@ -78,8 +113,8 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
     <section id="features" class="features">
         <div class="container">
             <h2 class="section-title">Why Choose %s?</h2>
-            <div class="features-grid">
-                %s
+            <p class="section-subtitle">Discover what makes our product exceptional</p>
+            <div class="features-grid">%s
             </div>
         </div>
     </section>
@@ -89,8 +124,7 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
         <div class="container">
             <h2 class="section-title">See It In Action</h2>
             <p class="section-subtitle">Watch our product demonstration and discover what makes it special</p>
-            <div class="video-wrapper">
-                %s
+            <div class="video-wrapper">%s
             </div>
         </div>
     </section>
@@ -143,7 +177,7 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; %s %s. All rights reserved. | Powered by AI Marketing Agent</p>
+                <p>&copy; %d %s. All rights reserved. | Powered by AI Marketing Agent</p>
             </div>
         </div>
     </footer>
@@ -151,80 +185,50 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
     <script src="script.js"></script>
 </body>
 </html>`,
-		productDescription,
-		productName,
-		productName,
-		productName,
-		productDescription,
-		productImageURL,
-		productName,
-		func() string {
-			featuresHTML := ""
-			if len(features) == 0 {
-				features = getDefaultFeatures()
-			}
-			for _, feature := range features {
-				icon := feature["icon"]
-				if icon == "" {
-					icon = "✨"
-				}
-				title := feature["title"]
-				if title == "" {
-					title = "Feature"
-				}
-				description := feature["description"]
-				if description == "" {
-					description = "Experience the difference."
-				}
-				featuresHTML += fmt.Sprintf(`<div class="feature-card">
-                    <div class="feature-icon">%s</div>
-                    <h3>%s</h3>
-                    <p>%s</p>
-                </div>`, icon, title, description)
-			}
-			return featuresHTML
-		}(),
-		func() string {
-			if videoURL != "" {
-				return fmt.Sprintf(`<video controls class="promo-video" poster="%s">
-                    <source src="%s" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>`, productImageURL, videoURL)
-			}
-			return `<div class="video-placeholder">
-                    <p>Video coming soon...</p>
-                </div>`
-		}(),
-		productName,
-		fmt.Sprintf("%d", time.Now().Year()),
-		productName,
+		productDescription, // meta description
+		productName,        // page title
+		productName,        // logo
+		productName,        // hero title
+		productDescription, // hero description
+		productImageURL,    // product image src
+		productName,        // product image alt
+		productName,        // "Why Choose X?"
+		featuresHTML,       // features cards
+		videoHTML,          // video player
+		productName,        // footer brand
+		currentYear,        // year
+		productName,        // footer copyright
 	)
 }
 
 // ModernWebsiteCSS generates modern marketing CSS
 func ModernWebsiteCSS() string {
-	return `* {
+	return `/* ===== RESET & BASE ===== */
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
 :root {
-    --primary-color: #6366f1;
-    --primary-dark: #4f46e5;
-    --secondary-color: #8b5cf6;
-    --text-dark: #1f2937;
-    --text-light: #6b7280;
-    --bg-light: #f9fafb;
+    --primary: #667eea;
+    --primary-dark: #5a67d8;
+    --secondary: #764ba2;
+    --text-dark: #1a202c;
+    --text-light: #718096;
+    --bg-light: #f7fafc;
     --white: #ffffff;
-    --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 20px rgba(0,0,0,0.12);
+    --shadow-lg: 0 20px 40px rgba(0,0,0,0.15);
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     line-height: 1.6;
     color: var(--text-dark);
     background: var(--white);
+    overflow-x: hidden;
 }
 
 .container {
@@ -233,15 +237,15 @@ body {
     padding: 0 20px;
 }
 
-/* Navigation */
+/* ===== NAVIGATION ===== */
 .navbar {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
-    padding: 1rem 0;
+    box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    padding: 1rem 0;
 }
 
 .navbar .container {
@@ -253,34 +257,47 @@ body {
 .logo {
     font-size: 1.5rem;
     font-weight: 900;
-    background: var(--gradient);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
 .nav-menu {
-    display: flex;
     list-style: none;
+    display: flex;
     gap: 2rem;
 }
 
 .nav-menu a {
     text-decoration: none;
     color: var(--text-dark);
-    font-weight: 500;
+    font-weight: 600;
     transition: color 0.3s;
+    font-size: 0.95rem;
 }
 
 .nav-menu a:hover {
-    color: var(--primary-color);
+    color: var(--primary);
 }
 
-/* Hero Section */
+/* ===== HERO SECTION ===== */
 .hero {
-    background: var(--gradient);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 4rem 0 6rem;
-    color: var(--white);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>');
+    opacity: 0.3;
 }
 
 .hero-content {
@@ -289,6 +306,12 @@ body {
     gap: 4rem;
     align-items: center;
     padding: 4rem 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-text {
+    color: var(--white);
 }
 
 .hero-title {
@@ -296,10 +319,12 @@ body {
     font-weight: 900;
     line-height: 1.1;
     margin-bottom: 1.5rem;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 
 .hero-description {
     font-size: 1.25rem;
+    line-height: 1.8;
     margin-bottom: 2rem;
     opacity: 0.95;
 }
@@ -307,175 +332,228 @@ body {
 .hero-cta {
     display: flex;
     gap: 1rem;
+    flex-wrap: wrap;
 }
 
+.hero-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.product-showcase {
+    width: 100%;
+    max-width: 500px;
+    height: auto;
+    border-radius: 20px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+    animation: float 6s ease-in-out infinite;
+    transform-origin: center;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-20px) rotate(1deg); }
+    50% { transform: translateY(-10px) rotate(-1deg); }
+    75% { transform: translateY(-15px) rotate(0.5deg); }
+}
+
+/* ===== BUTTONS ===== */
 .btn {
-    padding: 0.875rem 2rem;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.3s;
     display: inline-block;
-    border: none;
-    cursor: pointer;
+    padding: 0.875rem 2rem;
     font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 50px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border: none;
+    text-align: center;
 }
 
 .btn-primary {
     background: var(--white);
-    color: var(--primary-color);
+    color: var(--primary);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
 .btn-secondary {
     background: transparent;
-    color: var(--white);
     border: 2px solid var(--white);
+    color: var(--white);
 }
 
 .btn-secondary:hover {
     background: var(--white);
-    color: var(--primary-color);
+    color: var(--primary);
 }
 
 .btn-large {
-    padding: 1.25rem 3rem;
+    padding: 1.125rem 2.5rem;
     font-size: 1.125rem;
 }
 
 .btn-outline {
     background: transparent;
-    border: 2px solid var(--white);
+    border: 2px solid var(--primary);
+    color: var(--primary);
+}
+
+.btn-outline:hover {
+    background: var(--primary);
     color: var(--white);
 }
 
-.product-showcase {
-    width: 100%;
-    height: auto;
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
-}
-
-/* Features Section */
+/* ===== FEATURES SECTION ===== */
 .features {
     padding: 6rem 0;
-    background: var(--bg-light);
+    background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
 }
 
 .section-title {
-    font-size: 2.5rem;
+    font-size: 2.75rem;
     font-weight: 900;
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: 1rem;
     color: var(--text-dark);
+    letter-spacing: -0.5px;
 }
 
 .section-subtitle {
     text-align: center;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     color: var(--text-light);
-    margin-bottom: 3rem;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
+    max-width: 650px;
+    margin: 0 auto 3rem;
+    line-height: 1.6;
 }
 
 .features-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
+    gap: 2rem;
     max-width: 1200px;
     margin: 0 auto;
 }
 
 .feature-card {
-    background: var(--white);
-    padding: 1.5rem;
-    border-radius: 12px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    padding: 2.5rem 2rem;
+    border-radius: 16px;
     text-align: center;
-    transition: transform 0.3s, box-shadow 0.3s;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    min-height: 200px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transform: scaleX(0);
+    transition: transform 0.4s ease;
+}
+
+.feature-card:hover::before {
+    transform: scaleX(1);
 }
 
 .feature-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    transform: translateY(-12px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    border-color: rgba(102, 126, 234, 0.3);
 }
 
 .feature-icon {
-    font-size: 2.5rem;
-    margin-bottom: 0.75rem;
+    font-size: 3.5rem;
+    margin-bottom: 1.25rem;
+    display: inline-block;
+    transition: transform 0.4s ease;
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.15) rotate(5deg);
 }
 
 .feature-card h3 {
-    font-size: 1.1rem;
+    font-size: 1.35rem;
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     color: var(--text-dark);
+    line-height: 1.3;
 }
 
 .feature-card p {
     color: var(--text-light);
-    font-size: 0.9rem;
-    line-height: 1.5;
+    font-size: 1rem;
+    line-height: 1.7;
 }
 
-/* Video Section */
+/* ===== VIDEO SECTION ===== */
 .video-section {
     padding: 6rem 0;
     background: var(--white);
 }
 
 .video-wrapper {
-    max-width: 900px;
+    max-width: 800px;
     margin: 0 auto;
-    border-radius: 20px;
+    border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+    border: 4px solid #f8f9fa;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-wrapper:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 30px 70px rgba(0,0,0,0.25);
 }
 
 .promo-video {
     width: 100%;
     height: auto;
     display: block;
+    background: #000;
 }
 
 .video-placeholder {
-    background: var(--bg-light);
-    padding: 4rem;
+    background: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);
+    padding: 6rem 2rem;
     text-align: center;
     color: var(--text-light);
     font-size: 1.25rem;
 }
 
-/* CTA Section */
+/* ===== CTA SECTION ===== */
 .cta-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 6rem 0;
-    background: var(--gradient);
-    color: var(--white);
     text-align: center;
+    color: var(--white);
 }
 
 .cta-content h2 {
-    font-size: 2.5rem;
+    font-size: 3rem;
     font-weight: 900;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 }
 
 .cta-content p {
     font-size: 1.25rem;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
     opacity: 0.95;
 }
 
@@ -486,7 +564,7 @@ body {
     flex-wrap: wrap;
 }
 
-/* Footer */
+/* ===== FOOTER ===== */
 .footer {
     background: var(--text-dark);
     color: var(--white);
@@ -495,25 +573,28 @@ body {
 
 .footer-content {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3rem;
+    margin-bottom: 3rem;
 }
 
 .footer-section h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
     margin-bottom: 1rem;
-    font-size: 1.125rem;
 }
 
 .footer-section ul {
     list-style: none;
 }
 
+.footer-section ul li {
+    margin-bottom: 0.75rem;
+}
+
 .footer-section a {
-    color: rgba(255,255,255,0.8);
+    color: rgba(255,255,255,0.7);
     text-decoration: none;
-    display: block;
-    margin-bottom: 0.5rem;
     transition: color 0.3s;
 }
 
@@ -524,6 +605,7 @@ body {
 .social-links {
     display: flex;
     gap: 1rem;
+    flex-direction: column;
 }
 
 .footer-bottom {
@@ -531,123 +613,131 @@ body {
     padding-top: 2rem;
     border-top: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.6);
+    font-size: 0.9rem;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
     .hero-content {
         grid-template-columns: 1fr;
         text-align: center;
     }
     
+    .hero-cta {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
     .hero-title {
         font-size: 2.5rem;
     }
     
-    .hero-cta {
-        justify-content: center;
-        flex-direction: column;
+    .section-title {
+        font-size: 2rem;
     }
     
-    .features-grid {
+    .footer-content {
         grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
     .features-grid {
         grid-template-columns: 1fr;
-        gap: 1rem;
+    }
+    
+    .footer-content {
+        grid-template-columns: 1fr;
     }
     
     .nav-menu {
-        display: none;
+        gap: 1rem;
     }
     
-    .cta-buttons {
-        flex-direction: column;
-        align-items: center;
+    .cta-content h2 {
+        font-size: 2rem;
     }
-}
-`
+}`
 }
 
-// InteractiveJS generates enhanced JavaScript for the website
-func InteractiveJS() string {
-	return `// Marketing Website Interactive Features
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('AI Marketing Website Loaded');
-    
-    // Smooth scrolling for navigation links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-    
-    // Video play tracking
-    const video = document.querySelector('.promo-video');
-    if (video) {
-        video.addEventListener('play', function() {
-            console.log('Video started playing');
-            // Track video engagement (integrate with analytics)
-        });
-        
-        video.addEventListener('ended', function() {
-            console.log('Video finished');
-            // Track completion
-        });
-    }
-    
-    // Intersection Observer for animations
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -100px 0px'
-    };
-    
-    const observer = new IntersectionObserver(function(entries) {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }
-        });
-    }, observerOptions);
-    
-    // Observe feature cards
-    document.querySelectorAll('.feature-card').forEach(card => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        observer.observe(card);
-    });
-    
-    // CTA button click tracking
-    document.querySelectorAll('.btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const buttonText = this.textContent;
-            console.log('Button clicked:', buttonText);
-            // Track button clicks
-        });
-    });
-    
-    // Add parallax effect to hero
-    window.addEventListener('scroll', function() {
-        const scrolled = window.pageYOffset;
-        const hero = document.querySelector('.hero');
-        if (hero) {
-            hero.style.transform = 'translateY(' + (scrolled * 0.5) + 'px)';
+// ModernWebsiteJS generates interactive JavaScript
+func ModernWebsiteJS() string {
+	return `// Smooth scrolling for navigation links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
         }
     });
 });
-`
+
+// Add scroll animation for feature cards
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+        }
+    });
+}, observerOptions);
+
+// Observe all feature cards
+document.querySelectorAll('.feature-card').forEach((card, index) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(30px)';
+    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    card.style.transitionDelay = (index * 0.1) + 's';
+    observer.observe(card);
+});
+
+// Video autoplay on scroll
+const video = document.querySelector('.promo-video');
+if (video) {
+    const videoObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                video.play().catch(e => console.log('Autoplay prevented'));
+            } else {
+                video.pause();
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    videoObserver.observe(video);
 }
 
+// Navbar scroll effect
+let lastScroll = 0;
+const navbar = document.querySelector('.navbar');
+
+window.addEventListener('scroll', () => {
+    const currentScroll = window.pageYOffset;
+    
+    if (currentScroll > 100) {
+        navbar.style.padding = '0.5rem 0';
+        navbar.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
+    } else {
+        navbar.style.padding = '1rem 0';
+        navbar.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+    }
+    
+    lastScroll = currentScroll;
+});
+
+console.log('🚀 Website loaded successfully!');`
+}

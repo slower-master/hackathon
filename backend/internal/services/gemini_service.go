@@ -117,7 +117,7 @@ func (g *GeminiService) callGeminiAPI(prompt string) (string, error) {
 			"temperature":     0.7,  // Balanced creativity
 			"topK":            40,
 			"topP":            0.95,
-			"maxOutputTokens": 1024, // Increased to 1024 for longer responses
+			"maxOutputTokens": 2048, // Increased to 2048 to prevent truncation
 			"stopSequences":   []string{},
 		},
 		"safetySettings": []map[string]interface{}{
@@ -320,60 +320,34 @@ Return ONLY valid JSON with these keys:`, productName, productDescription)
 // GenerateWebsiteFeatures generates 4 product features/benefits using Gemini
 func (g *GeminiService) GenerateWebsiteFeatures(productName, productDescription, productCategory, productPrice string) ([]map[string]string, error) {
 	fmt.Printf("\n🤖 Generating website features with Gemini...\n")
+	fmt.Printf("🔍 Input: Name='%s', Desc='%s', Cat='%s', Price='%s'\n", productName, productDescription, productCategory, productPrice)
 
-	prompt := fmt.Sprintf(`You are an expert marketing copywriter. Generate exactly 4 compelling product features/benefits for a website landing page.
+	prompt := fmt.Sprintf(`Generate 4 product features for: %s (%s). Category: %s, Price: %s
 
-Product Name: %s
-Description: %s
-Category: %s
-Price: %s
-
-REQUIREMENTS:
-1. Generate EXACTLY 4 features
-2. Each feature should have:
-   - An emoji icon (🚀, 💎, 🔒, ⚡, 🎯, ✨, 🌟, 💪, 🎨, 🔥, etc.)
-   - A short title (2-4 words)
-   - A description (15-25 words)
-3. Features should be relevant to the product description
-4. Make them compelling and benefit-focused
-5. Use varied emojis
-
-OUTPUT FORMAT (JSON only, no other text):
+Return ONLY valid JSON:
 {
   "features": [
-    {
-      "icon": "🚀",
-      "title": "Lightning Fast",
-      "description": "Experience unparalleled speed and efficiency that transforms your workflow instantly."
-    },
-    {
-      "icon": "💎",
-      "title": "Premium Quality",
-      "description": "Built with the finest materials and cutting-edge technology for lasting excellence."
-    },
-    {
-      "icon": "🔒",
-      "title": "Secure & Reliable",
-      "description": "Your data and privacy are protected with enterprise-grade security measures."
-    },
-    {
-      "icon": "⚡",
-      "title": "Easy to Use",
-      "description": "Intuitive design that anyone can master in minutes, no learning curve required."
-    }
+    {"icon": "emoji", "title": "2-4 words", "description": "15-25 words benefit-focused"},
+    {"icon": "emoji", "title": "2-4 words", "description": "15-25 words benefit-focused"},
+    {"icon": "emoji", "title": "2-4 words", "description": "15-25 words benefit-focused"},
+    {"icon": "emoji", "title": "2-4 words", "description": "15-25 words benefit-focused"}
   ]
 }
 
-Now generate features for this product:`, productName, productDescription, productCategory, productPrice)
+Make features product-specific, use varied emojis (🚀💎🔒⚡🎯✨🌟💪🎨🔥), compelling titles, benefit-focused descriptions.`, productName, productDescription, productCategory, productPrice)
 
 	response, err := g.callGeminiAPI(prompt)
 	if err != nil {
+		fmt.Printf("❌ Gemini API call failed: %v\n", err)
 		return nil, fmt.Errorf("failed to generate features: %v", err)
 	}
+
+	fmt.Printf("📥 Raw Gemini response (first 200 chars): %s...\n", response[:min(200, len(response))])
 
 	// Parse JSON response
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(response), &result); err != nil {
+		fmt.Printf("⚠️  Initial JSON parse failed, trying to clean response...\n")
 		// Try to extract JSON from markdown code blocks
 		response = strings.TrimSpace(response)
 		if strings.HasPrefix(response, "```json") {
@@ -387,14 +361,20 @@ Now generate features for this product:`, productName, productDescription, produ
 		}
 		
 		if err := json.Unmarshal([]byte(response), &result); err != nil {
+			fmt.Printf("❌ JSON parse failed after cleaning: %v\n", err)
+			fmt.Printf("📄 Cleaned response: %s\n", response)
 			return nil, fmt.Errorf("failed to parse features JSON: %v", err)
 		}
+		fmt.Printf("✅ Successfully cleaned and parsed JSON\n")
 	}
 
 	featuresArray, ok := result["features"].([]interface{})
 	if !ok {
+		fmt.Printf("❌ No 'features' key in response. Keys found: %v\n", getKeys(result))
 		return nil, fmt.Errorf("invalid features format in response")
 	}
+	
+	fmt.Printf("✅ Found %d features in response\n", len(featuresArray))
 
 	features := make([]map[string]string, 0, 4)
 	for i, f := range featuresArray {
@@ -428,11 +408,27 @@ Now generate features for this product:`, productName, productDescription, produ
 	}
 
 	// Ensure we have exactly 4 features
-	for len(features) < 4 {
-		features = append(features, getDefaultFeature(len(features)))
+	if len(features) < 4 {
+		defaults := getDefaultFeatures()
+		for len(features) < 4 && len(features) < len(defaults) {
+			features = append(features, defaults[len(features)])
+		}
 	}
 
 	fmt.Printf("✅ Generated %d features\n", len(features))
+	fmt.Printf("📋 Features details:\n")
+	for i, f := range features {
+		fmt.Printf("   %d. [%s] %s - %s\n", i+1, f["icon"], f["title"], f["description"][:50])
+	}
 	return features[:4], nil
+}
+
+// Helper function to get map keys for debugging
+func getKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 

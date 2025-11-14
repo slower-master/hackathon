@@ -30,12 +30,17 @@ USE_FULL_AI_PIPELINE=true
 # API KEYS (REQUIRED)
 # ============================================
 
-# D-ID API Key (REQUIRED - You already have this)
+# Google Gemini API Key (REQUIRED for AI-generated website features)
+# Get from: https://makersuite.google.com/app/apikey
+# Free tier: 60 requests per minute
+GOOGLE_GEMINI_API_KEY=your_gemini_api_key_here
+
+# D-ID API Key (REQUIRED for avatar video generation)
 # Get from: https://studio.d-id.com/account-settings
 # Format: Base64 encoded "email:api_secret"
 AI_API_KEY=your_did_api_key_here
 
-# RunwayML API Key (REQUIRED if USE_FULL_AI_PIPELINE=true)
+# RunwayML API Key (OPTIONAL - only if USE_FULL_AI_PIPELINE=true)
 # Get from: https://app.runwayml.com/account/secrets
 # Click "Create API Secret" and copy the key
 RUNWAYML_API_KEY=your_runwayml_api_key_here
@@ -44,6 +49,14 @@ RUNWAYML_API_KEY=your_runwayml_api_key_here
 # Get from: https://dashboard.shotstack.io/
 # Copy from dashboard (starts with "stage_" or "prod_")
 SHOTSTACK_API_KEY=your_shotstack_api_key_here
+
+# ============================================
+# WEBSITE GENERATION SETTINGS
+# ============================================
+
+# Use modern v0.dev style for websites (true/false)
+# Default: true (recommended for modern design)
+USE_V0_STYLE=true
 
 # ============================================
 # QUICK START
@@ -58,6 +71,7 @@ SHOTSTACK_API_KEY=your_shotstack_api_key_here
 # API KEY LINKS
 # ============================================
 
+# Gemini: https://makersuite.google.com/app/apikey (FREE)
 # D-ID: https://studio.d-id.com/account-settings
 # RunwayML: https://app.runwayml.com/account/secrets
 # Shotstack: https://dashboard.shotstack.io/

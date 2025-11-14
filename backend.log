@@ -1,7 +1,8 @@
-2025/11/12 13:54:37 === Configuration ===
-2025/11/12 13:54:37 AI Provider: did
-2025/11/12 13:54:37 AI API Key: ***_sj61DbZm3
-2025/11/12 13:54:37 ====================
+2025/11/14 14:26:07 === Configuration ===
+2025/11/14 14:26:07 AI Provider: did
+2025/11/14 14:26:07 AI API Key: ***YPhjkblUGi
+2025/11/14 14:26:07 🤖 Google Gemini: ENABLED (AIzaSyC_...4vXc)
+2025/11/14 14:26:07 ====================
 [GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
 
 [GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
@@ -13,36 +14,143 @@
 [GIN-debug] GET    /api/v1/projects/:id      --> github.com/dealshare/hacathon/backend/internal/handlers.(*Handlers).GetProject-fm (4 handlers)
 [GIN-debug] POST   /api/v1/projects/:id/generate-video --> github.com/dealshare/hacathon/backend/internal/handlers.(*Handlers).GenerateVideo-fm (4 handlers)
 [GIN-debug] POST   /api/v1/projects/:id/generate-website --> github.com/dealshare/hacathon/backend/internal/handlers.(*Handlers).GenerateWebsite-fm (4 handlers)
+[GIN-debug] POST   /api/v1/projects/:id/upload-to-instagram --> github.com/dealshare/hacathon/backend/internal/handlers.(*Handlers).UploadToInstagram-fm (4 handlers)
 [GIN-debug] GET    /static/uploads/*filepath --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
 [GIN-debug] HEAD   /static/uploads/*filepath --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
 [GIN-debug] GET    /static/generated/videos/*filepath --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
 [GIN-debug] HEAD   /static/generated/videos/*filepath --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
 [GIN-debug] GET    /static/generated/websites/*filepath --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
 [GIN-debug] HEAD   /static/generated/websites/*filepath --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
-2025/11/12 13:54:37 Server starting on port 8080
+2025/11/14 14:26:07 Server starting on port 8080
 [GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
 Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
 [GIN-debug] Listening and serving HTTP on :8080
-[GIN] 2025/11/12 - 13:54:39 | 200 |     330.083µs |             ::1 | GET      "/api/v1/projects"
-[GIN] 2025/11/12 - 13:55:58 | 201 |    4.807542ms |             ::1 | POST     "/api/v1/upload"
-[GIN] 2025/11/12 - 13:56:01 | 204 |       9.083µs |             ::1 | OPTIONS  "/api/v1/projects/87bf4bb1-f8ab-49fb-9e39-0982ba9fa586/generate-video"
 
-=== D-ID API Request ===
-URL: https://api.d-id.com/talks
-Method: POST
-Payload (first 200 chars): {"config":{"fluent":true,"pad_audio":0,"stitch":true},"script":{"input":"Hello! Create a marketing video showcasing the product displayed on the TV image, featuring the person from the second image as...
-Curl equivalent:
-curl -X POST 'https://api.d-id.com/talks' \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Basic ZGluZXNoLnJhbUBkZWFsc2hhcmUuaW46:31Ln-cQ0VJ-_sj61DbZm3' \
-  -d '{"config":{"fluent":true,"pad_audio":0,"stitch":true},"script":{"input":"Hello! Create a marketing video showcasing the product displayed on the TV image, featuring the person from the second image as the presenter or model. Make it look professional, engaging, and suitable for social media promotion. Get started today and experience the difference!","provider":{"type":"microsoft","voice_id":"en-US-JennyNeural"},"type":"text"},"source_url":"data:image/jpeg;base64,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b3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPjxyZGY6RGVzY3JpcHRpb24geG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgcmRmOmFib3V0PSIiIHhtcFJpZ2h0czpXZWJTdGF0ZW1lbnQ9Imh0dHBzOi8vd3d3LmlzdG9ja3Bob3RvLmNvbS9sZWdhbC9saWNlbnNlLWFncmVlbWVudD91dG1fbWVkaXVtPW9yZ2FuaWMmYW1wO3V0bV9zb3VyY2U9Z29vZ2xlJmFtcDt1dG1fY2FtcGFpZ249aXB0Y3VybCI+PC9yZGY6RGVzY3JpcHRpb24+PHJkZjpEZXNjcmlwdGlvbiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHJkZjphYm91dD0iIj48ZGM6Y3JlYXRvcj48cmRmOlNlcT48cmRmOmxpPk1hcmlpYSBWaXRrb3Zza2E8L3JkZjpsaT48L3JkZjpTZXE+PC9kYzpjcmVhdG9yPjwvcmRmOkRlc2NyaXB0aW9uPjwvcmRmOlJERj48L3g6eG1wbWV0YT4KPD94cGFja2V0IGVuZD0idyI/PgA="}'
-=====================
+🖼️  Product Image URL: /static/uploads/71qmq-MA8pL._AC_UF894,1000_QL80_.jpg
+🎥 Video URL: /static/generated/videos/5ea5269d-2b05-4ced-8719-f273e20c6125.mp4
+📁 Product Image Path: uploads/71qmq-MA8pL._AC_UF894,1000_QL80_.jpg
 
-=== D-ID API Response ===
-Status: 401 Unauthorized
-Status Code: 401
-Error Body: {"message":"Unauthorized"}
-=====================
+============================================================
+🤖 GEMINI: Generating Website Features
+============================================================
+🔑 Gemini API Key: HARDCODED for testing
+📦 Product: Papdi Snack
+📝 Description: Tasy Healthy Snack By Dealshare
+🏷️  Category: food
+💰 Price: 49
 
-[GIN] 2025/11/12 - 13:56:03 | 500 |  1.401503291s |             ::1 | POST     "/api/v1/projects/87bf4bb1-f8ab-49fb-9e39-0982ba9fa586/generate-video"
-signal: killed
+🤖 Generating website features with Gemini...
+🔍 Input: Name='Papdi Snack', Desc='Tasy Healthy Snack By Dealshare', Cat='food', Price='49'
+📤 Calling Gemini Pro API...
+❌ Gemini API call failed: Gemini API error (503 Service Unavailable): {
+  "error": {
+    "code": 503,
+    "message": "The model is overloaded. Please try again later.",
+    "status": "UNAVAILABLE"
+  }
+}
+
+❌ Gemini features generation failed: failed to generate features: Gemini API error (503 Service Unavailable): {
+  "error": {
+    "code": 503,
+    "message": "The model is overloaded. Please try again later.",
+    "status": "UNAVAILABLE"
+  }
+}
+
+⚠️  Using default features as fallback
+============================================================
+
+🌐 Using v0.dev style website generation...
+
+🌐 Generating website with v0.dev approach...
+✅ v0Service received 4 features from Gemini:
+   1. 🌾 100% Natural Ingredients
+   2. 😋 Irresistibly Delicious
+   3. ✨ Fresh & Crunchy
+   4. 🎯 Perfect for Every Occasion
+✅ Website generated successfully!
+✅ Website files saved to: generated/websites/v0-website-1763110627
+
+============================================================
+✅ WEBSITE GENERATION COMPLETE
+============================================================
+📁 Website Path: generated/websites/e0f37306-5a59-421b-b52d-6ca0a0710b78
+🆔 Project ID: 56dcb9e7-881a-48c6-bfda-323ce56aed44
+📊 Status: website_complete
+============================================================
+
+[GIN] 2025/11/14 - 14:27:07 | 200 | 13.495055125s |             ::1 | POST     "/api/v1/projects/56dcb9e7-881a-48c6-bfda-323ce56aed44/generate-website"
+
+🖼️  Product Image URL: /static/uploads/71qmq-MA8pL._AC_UF894,1000_QL80_.jpg
+🎥 Video URL: /static/generated/videos/5ea5269d-2b05-4ced-8719-f273e20c6125.mp4
+📁 Product Image Path: uploads/71qmq-MA8pL._AC_UF894,1000_QL80_.jpg
+
+============================================================
+🤖 GEMINI: Generating Website Features
+============================================================
+🔑 Gemini API Key: HARDCODED for testing
+📦 Product: Papdi Snack
+📝 Description: Tasy Healthy Snack By Dealshare
+🏷️  Category: food
+💰 Price: 49
+
+🤖 Generating website features with Gemini...
+🔍 Input: Name='Papdi Snack', Desc='Tasy Healthy Snack By Dealshare', Cat='food', Price='49'
+📤 Calling Gemini Pro API...
+📥 Gemini API Response Status: 200 OK
+📋 Response preview (first 500 chars): {
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```json\n{\n  \"features\": [\n    {\n      \"icon\": \"✨\",\n      \"title\": \"Crispy & Flavorful\",\n      \"description\": \"Savor the delightful crunch and authentic, rich flavors of traditional papdi. A truly satisfying snack that perfectly blends deliciousness with a light, airy texture.\"\n    },\n    {\n      \"icon\": \"💪\",\n      \"title\": \"Healthy Indulgence\",\n      \"descriptio
+📥 Raw Gemini response (first 200 chars): ```json
+{
+  "features": [
+    {
+      "icon": "✨",
+      "title": "Crispy & Flavorful",
+      "description": "Savor the delightful crunch and authentic, rich flavors of traditional papdi. A truly sa...
+⚠️  Initial JSON parse failed, trying to clean response...
+✅ Successfully cleaned and parsed JSON
+✅ Found 4 features in response
+✅ Generated 4 features
+📋 Features details:
+   1. [✨] Crispy & Flavorful - Savor the delightful crunch and authentic, rich fl
+   2. [💪] Healthy Indulgence - Enjoy this papdi snack guilt-free, crafted to be a
+   3. [🚀] On-the-Go Delight - Perfectly sized for your busy schedule, this papdi
+   4. [💎] Unbeatable Value - Experience premium quality and authentic taste at 
+✅ Successfully generated 4 AI features:
+   1. ✨ Crispy & Flavorful: Savor the delightful crunch and authentic, rich flavors of traditional papdi. A truly satisfying snack that perfectly blends deliciousness with a light, airy texture.
+   2. 💪 Healthy Indulgence: Enjoy this papdi snack guilt-free, crafted to be a healthier alternative without sacrificing taste. A smart choice for mindful snacking that nourishes your body.
+   3. 🚀 On-the-Go Delight: Perfectly sized for your busy schedule, this papdi snack is your ideal companion for quick cravings. Convenient and ready whenever you need a tasty boost.
+   4. 💎 Unbeatable Value: Experience premium quality and authentic taste at an incredible price of just 49. A truly smart and affordable way to enjoy a healthy, delicious snack.
+============================================================
+
+🌐 Using v0.dev style website generation...
+
+🌐 Generating website with v0.dev approach...
+✅ v0Service received 4 features from Gemini:
+   1. ✨ Crispy & Flavorful
+   2. 💪 Healthy Indulgence
+   3. 🚀 On-the-Go Delight
+   4. 💎 Unbeatable Value
+✅ Website generated successfully!
+✅ Website files saved to: generated/websites/v0-website-1763110684
+
+============================================================
+✅ WEBSITE GENERATION COMPLETE
+============================================================
+📁 Website Path: generated/websites/8aff5648-5319-49d7-8205-440a37ef4ae3
+🆔 Project ID: 56dcb9e7-881a-48c6-bfda-323ce56aed44
+📊 Status: website_complete
+============================================================
+
+[GIN] 2025/11/14 - 14:28:04 | 200 |  6.584942083s |             ::1 | POST     "/api/v1/projects/56dcb9e7-881a-48c6-bfda-323ce56aed44/generate-website"
+[GIN] 2025/11/14 - 14:29:27 | 304 |     149.333µs |             ::1 | GET      "/static/generated/websites/4e91e872-ed3c-4cd8-b85b-880de7bc7beb/"
+[GIN] 2025/11/14 - 14:29:27 | 304 |     124.167µs |             ::1 | GET      "/static/generated/websites/4e91e872-ed3c-4cd8-b85b-880de7bc7beb/styles.css"
+[GIN] 2025/11/14 - 14:29:27 | 304 |      146.75µs |             ::1 | GET      "/static/generated/websites/4e91e872-ed3c-4cd8-b85b-880de7bc7beb/script.js"
+[GIN] 2025/11/14 - 14:29:27 | 304 |      94.542µs |             ::1 | GET      "/static/uploads/71qmq-MA8pL._AC_UF894,1000_QL80_.jpg"
+[GIN] 2025/11/14 - 14:29:27 | 206 |   13.015542ms |             ::1 | GET      "/static/generated/videos/5ea5269d-2b05-4ced-8719-f273e20c6125.mp4"

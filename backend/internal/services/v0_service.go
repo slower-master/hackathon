@@ -85,6 +85,74 @@ func (v *V0Service) generateEnhancedHTML(productName, productDescription, produc
 		productDescription = "Transform your experience with our innovative solution"
 	}
 
+	// Generate features HTML
+	featuresHTML := ""
+	if len(features) == 0 {
+		fmt.Printf("⚠️  NO FEATURES PASSED TO v0Service - Using defaults\n")
+		features = getDefaultFeatures()
+	} else {
+		fmt.Printf("✅ v0Service received %d features from Gemini:\n", len(features))
+		for i, f := range features {
+			fmt.Printf("   %d. %s %s\n", i+1, f["icon"], f["title"])
+		}
+	}
+	colors := []string{"purple", "blue", "indigo", "violet"}
+	for i, feature := range features {
+		if i >= 4 {
+			break
+		}
+		icon := feature["icon"]
+		if icon == "" {
+			icon = "✨"
+		}
+		title := feature["title"]
+		if title == "" {
+			title = "Feature"
+		}
+		description := feature["description"]
+		if description == "" {
+			description = "Experience the difference."
+		}
+		color := colors[i%len(colors)]
+		featuresHTML += fmt.Sprintf(`<div class="group p-6 bg-gradient-to-br from-%s-50 to-white rounded-xl border-2 border-%s-100 hover:border-%s-300 hover:shadow-xl transition transform hover:scale-105">
+                    <div class="w-14 h-14 bg-gradient-to-br from-%s-500 to-%s-600 rounded-xl flex items-center justify-center text-2xl mb-4 shadow-lg group-hover:scale-110 transition">
+                        %s
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">%s</h3>
+                    <p class="text-gray-600 text-sm leading-relaxed">%s</p>
+                </div>`, color, color, color, color, color, icon, title, description)
+	}
+
+	// Generate video HTML
+	videoHTML := ""
+	if videoURL != "" {
+		videoHTML = fmt.Sprintf(`<video id="demo-video" controls class="w-full rounded-2xl" poster="%s">
+                        <source src="%s" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>`, productImageURL, videoURL)
+	} else {
+		videoHTML = `<div class="p-8 text-center text-gray-500">
+                        <p class="text-xl">Video coming soon...</p>
+                    </div>`
+	}
+
+	// Generate price HTML
+	priceHTML := ""
+	if productPrice != "" && productPrice != "$0" {
+		priceHTML = fmt.Sprintf(`<div class="flex items-center space-x-3">
+                        <span class="text-3xl font-black text-purple-600">%s</span>
+                        <span class="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-bold">Limited Offer!</span>
+                    </div>`, productPrice)
+	}
+
+	// Get first letter for icon
+	iconLetter := "P"
+	if len(productName) > 0 {
+		iconLetter = string(productName[0])
+	}
+
+	currentYear := time.Now().Year()
+
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
@@ -107,6 +175,43 @@ func (v *V0Service) generateEnhancedHTML(productName, productDescription, produc
             }
         }
     </script>
+    <style>
+        /* ULTRA FORCE 4 columns - HIGHEST PRIORITY */
+        #features .grid,
+        #features div.grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 1.5rem !important;
+            width: 100%% !important;
+        }
+        #features .grid > div,
+        #features .grid > * {
+            width: 100%% !important;
+            max-width: 100%% !important;
+            min-width: 0 !important;
+            flex: none !important;
+            float: none !important;
+        }
+        @media screen and (min-width: 1025px) {
+            #features .grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            }
+        }
+        @media (max-width: 1024px) {
+            #features .grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+        @media (max-width: 640px) {
+            #features .grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        /* Make video smaller */
+        #video .max-w-4xl {
+            max-width: 600px !important;
+        }
+    </style>
 </head>
 <body class="font-['Inter'] antialiased">
     
@@ -183,7 +288,7 @@ func (v *V0Service) generateEnhancedHTML(productName, productDescription, produc
                 </p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            <div class="grid grid-cols-4 gap-6 max-w-7xl mx-auto" style="display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 1.5rem !important; width: 100%% !important;">
                 %s
             </div>
         </div>
@@ -258,7 +363,7 @@ func (v *V0Service) generateEnhancedHTML(productName, productDescription, produc
                 </div>
             </div>
             <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
-                <p>&copy; %s %s. All rights reserved. | Powered by v0.dev & AI</p>
+                <p>&copy; %d %s. All rights reserved. | Powered by v0.dev & AI</p>
             </div>
         </div>
     </footer>
@@ -266,70 +371,21 @@ func (v *V0Service) generateEnhancedHTML(productName, productDescription, produc
     <script src="script.js"></script>
 </body>
 </html>`,
-		productDescription,
-		productName,
-		string(productName[0]),
-		productName,
-		productName,
-		productDescription,
-		func() string {
-			if productPrice != "" && productPrice != "$0" {
-				return fmt.Sprintf(`<div class="flex items-center space-x-3">
-                        <span class="text-3xl font-black text-purple-600">%s</span>
-                        <span class="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-bold">Limited Offer!</span>
-                    </div>`, productPrice)
-			}
-			return ""
-		}(),
-		productImageURL,
-		productName,
-		func() string {
-			featuresHTML := ""
-			if len(features) == 0 {
-				features = getDefaultFeatures()
-			}
-			colors := []string{"purple", "blue", "indigo", "violet"}
-			for i, feature := range features {
-				if i >= 4 {
-					break
-				}
-				icon := feature["icon"]
-				if icon == "" {
-					icon = "✨"
-				}
-				title := feature["title"]
-				if title == "" {
-					title = "Feature"
-				}
-				description := feature["description"]
-				if description == "" {
-					description = "Experience the difference."
-				}
-				color := colors[i%len(colors)]
-				featuresHTML += fmt.Sprintf(`<div class="group p-6 bg-gradient-to-br from-%s-50 to-white rounded-xl border-2 border-%s-100 hover:border-%s-300 hover:shadow-xl transition transform hover:scale-105">
-                    <div class="w-14 h-14 bg-gradient-to-br from-%s-500 to-%s-600 rounded-xl flex items-center justify-center text-2xl mb-4 shadow-lg group-hover:scale-110 transition">
-                        %s
-                    </div>
-                    <h3 class="text-lg font-bold mb-2">%s</h3>
-                    <p class="text-gray-600 text-sm leading-relaxed">%s</p>
-                </div>`, color, color, color, color, color, icon, title, description)
-			}
-			return featuresHTML
-		}(),
-		func() string {
-			if videoURL != "" {
-				return fmt.Sprintf(`<video id="demo-video" controls class="w-full rounded-2xl" poster="%s">
-                        <source src="%s" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>`, productImageURL, videoURL)
-			}
-			return `<div class="p-8 text-center text-gray-500">
-                        <p class="text-xl">Video coming soon...</p>
-                    </div>`
-		}(),
-		productName,
-		fmt.Sprintf("%d", time.Now().Year()),
-		productName,
+		productDescription,  // meta description
+		productName,         // title
+		iconLetter,          // nav icon
+		productName,         // nav brand
+		productName,         // hero title
+		productDescription,  // hero description
+		priceHTML,           // price section
+		productImageURL,     // product image src
+		productName,         // product image alt
+		productName,         // "Why Choose X?"
+		featuresHTML,        // features HTML
+		videoHTML,           // video HTML
+		productName,         // footer brand
+		currentYear,         // year
+		productName,         // footer copyright
 	)
 }
 
@@ -392,6 +448,19 @@ func (v *V0Service) generateModernCSS() string {
 
 ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #8b5cf6, #6366f1);
+}
+
+/* Responsive grid for features - FORCE 4 columns on desktop */
+@media (max-width: 1024px) {
+    .grid-cols-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .grid-cols-4 {
+        grid-template-columns: 1fr !important;
+    }
 }
 `
 }

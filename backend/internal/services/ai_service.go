@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dealshare/hacathon/backend/internal/config"
 	"github.com/dealshare/hacathon/backend/internal/models"
@@ -95,6 +96,11 @@ func (s *AIService) generateWebsiteFiles(project models.Project, websiteDir stri
 	if project.GeneratedVideoPath != "" {
 		videoURL = fmt.Sprintf("/static/generated/videos/%s", filepath.Base(project.GeneratedVideoPath))
 	}
+	
+	// Log URLs for debugging
+	fmt.Printf("\n🖼️  Product Image URL: %s\n", productImageURL)
+	fmt.Printf("🎥 Video URL: %s\n", videoURL)
+	fmt.Printf("📁 Product Image Path: %s\n", project.ProductImagePath)
 
 	// Use actual product details from the project
 	productName := project.ProductName
@@ -108,32 +114,37 @@ func (s *AIService) generateWebsiteFiles(project models.Project, websiteDir stri
 	}
 
 	// Generate AI features using Gemini
-	fmt.Printf("\n🤖 Generating AI features for website with Gemini...\n")
+	fmt.Printf("\n" + strings.Repeat("=", 60) + "\n")
+	fmt.Printf("🤖 GEMINI: Generating Website Features\n")
+	fmt.Printf(strings.Repeat("=", 60) + "\n")
 	var features []map[string]string
-	geminiAPIKey := os.Getenv("GOOGLE_GEMINI_API_KEY")
-	if geminiAPIKey == "" {
-		geminiAPIKey = os.Getenv("GEMINI_API_KEY")
-	}
 	
-	if geminiAPIKey != "" {
-		geminiService := NewGeminiService(geminiAPIKey)
-		aiFeatures, err := geminiService.GenerateWebsiteFeatures(productName, productDescription, project.ProductCategory, project.ProductPrice)
-		if err != nil {
-			fmt.Printf("⚠️  Gemini features generation failed: %v, using defaults\n", err)
-			features = getDefaultFeatures()
-		} else {
-			features = aiFeatures
-			fmt.Printf("✅ Generated %d AI features\n", len(features))
-		}
-	} else {
-		fmt.Printf("ℹ️  No Gemini API key, using default features\n")
+	// HARDCODED Gemini API key for testing
+	geminiAPIKey := "AIzaSyC_gI30tRdg-eYjVJn7ses22lrzrRB4vXc"
+	
+	fmt.Printf("🔑 Gemini API Key: HARDCODED for testing\n")
+	fmt.Printf("📦 Product: %s\n", productName)
+	fmt.Printf("📝 Description: %s\n", productDescription)
+	fmt.Printf("🏷️  Category: %s\n", project.ProductCategory)
+	fmt.Printf("💰 Price: %s\n", project.ProductPrice)
+	
+	geminiService := NewGeminiService(geminiAPIKey)
+	aiFeatures, err := geminiService.GenerateWebsiteFeatures(productName, productDescription, project.ProductCategory, project.ProductPrice)
+	if err != nil {
+		fmt.Printf("❌ Gemini features generation failed: %v\n", err)
+		fmt.Printf("⚠️  Using default features as fallback\n")
 		features = getDefaultFeatures()
+	} else {
+		features = aiFeatures
+		fmt.Printf("✅ Successfully generated %d AI features:\n", len(features))
+		for i, f := range features {
+			fmt.Printf("   %d. %s %s: %s\n", i+1, f["icon"], f["title"], f["description"])
+		}
 	}
+	fmt.Printf(strings.Repeat("=", 60) + "\n\n")
 
-	// Check if we should use v0.dev style generation
-	useV0Style := os.Getenv("USE_V0_STYLE")
-	
-	if useV0Style == "true" || useV0Style == "1" {
+	// Check if we should use v0.dev style generation (from config)
+	if s.config.UseV0Style {
 		fmt.Printf("🌐 Using v0.dev style website generation...\n")
 		
 		// Use v0.dev service for modern website generation
@@ -173,7 +184,7 @@ func (s *AIService) generateWebsiteFiles(project models.Project, websiteDir stri
 	}
 
 	// Generate interactive JavaScript
-	jsContent := InteractiveJS()
+	jsContent := ModernWebsiteJS()
 	if err := os.WriteFile(filepath.Join(websiteDir, "script.js"), []byte(jsContent), 0644); err != nil {
 		return err
 	}

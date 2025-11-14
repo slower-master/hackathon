@@ -12,7 +12,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -585,6 +587,29 @@ func (vg *VideoGenerator) pollRunwayMLTask(taskID string) (string, error) {
 	return "", fmt.Errorf("RunwayML generation timeout after 5 minutes")
 }
 
+// getVideoDuration gets the duration of a video file in seconds using ffprobe
+func (vg *VideoGenerator) getVideoDuration(videoPath string) (float64, error) {
+	cmd := exec.Command("ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		videoPath,
+	)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, fmt.Errorf("ffprobe failed: %v", err)
+	}
+
+	durationStr := strings.TrimSpace(string(output))
+	duration, err := strconv.ParseFloat(durationStr, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse duration: %v", err)
+	}
+
+	return duration, nil
+}
+
 // CompositeVideosWithShotstack composites avatar and product videos using Shotstack API
 // layout options:
 // - "presenter" (RECOMMENDED): Person left (60%), product right (40%) - looks like real product explanation
@@ -596,9 +621,27 @@ func (vg *VideoGenerator) CompositeVideosWithShotstack(productVideoPath, avatarV
 	fmt.Printf("\n🎨 Compositing videos with Shotstack API...\n")
 	fmt.Printf("📐 Layout: %s\n", layout)
 
+	// Get actual video durations
+	fmt.Printf("\n🔍 Detecting video durations...\n")
+	avatarDuration, err := vg.getVideoDuration(avatarVideoPath)
+	if err != nil {
+		fmt.Printf("⚠️  Could not detect avatar duration: %v, assuming 5 seconds\n", err)
+		avatarDuration = 5.0
+	} else {
+		fmt.Printf("✅ Avatar video duration: %.2f seconds\n", avatarDuration)
+	}
+
+	productDuration, err := vg.getVideoDuration(productVideoPath)
+	if err != nil {
+		fmt.Printf("⚠️  Could not detect product duration: %v, assuming 5 seconds\n", err)
+		productDuration = 5.0
+	} else {
+		fmt.Printf("✅ Product video duration: %.2f seconds\n", productDuration)
+	}
+
 	// Shotstack requires publicly accessible URLs
 	// Try multiple upload services with fallback
-	fmt.Printf("📤 Uploading videos to public hosting...\n")
+	fmt.Printf("\n📤 Uploading videos to public hosting...\n")
 
 	productVideoURL, err := vg.uploadWithFallback(productVideoPath)
 	if err != nil {
@@ -897,99 +940,22 @@ func (vg *VideoGenerator) CompositeVideosWithShotstack(productVideoPath, avatarV
 			},
 		}
 	} else if layout == "product_main" {
-		// PRODUCT_MAIN LAYOUT - Product fullscreen + Person in bottom-right corner
-		fmt.Printf("📐 Using PRODUCT MAIN layout: Product fullscreen + Person bottom-right\n")
-		fmt.Printf("   🎥 Product: Fullscreen background (cover fit)\n")
-		fmt.Printf("   👤 Person: Bottom-right corner overlay (30%% scale, always visible)\n")
-		tracks = []interface{}{
-			// Track 0: Product video (BACKGROUND LAYER - fullscreen)
-			map[string]interface{}{
-				"clips": []interface{}{
-					map[string]interface{}{
-						"asset": map[string]interface{}{
-							"type": "video",
-							"src":  productVideoURL,
-						},
-						"start":  0.0,
-						"length": 15.0,    // Full 15 seconds
-						"fit":    "cover", // Fullscreen - fills entire frame
-						"transition": map[string]interface{}{
-							"in": "fade",
-						},
-					},
-				},
-			},
-			// Track 1: Avatar video (TOP LAYER - bottom-right corner)
-			map[string]interface{}{
-				"clips": []interface{}{
-					map[string]interface{}{
-						"asset": map[string]interface{}{
-							"type": "video",
-							"src":  avatarVideoURL,
-						},
-						"start":  0.0,
-						"length": 15.0, // Full 15 seconds (will show for duration of avatar video)
-						"offset": map[string]interface{}{
-							"x": 0.35, // Right side (positive = right, 0.35 = 35% from center to right)
-							"y": 0.35, // Bottom side (positive = bottom, 0.35 = 35% from center to bottom)
-						},
-						"scale":   0.30,      // 30% of screen - small corner overlay
-						"opacity": 1.0,       // Fully opaque
-						"fit":     "contain", // Entire person visible
-						"transition": map[string]interface{}{
-							"in": "fade", // Smooth fade in
-						},
-					},
-				},
-			},
-		}
+		// SIMPLE PRODUCT_MAIN LAYOUT - Product fullscreen + Person bottom-right (15s)
+		fmt.Printf("\n" + strings.Repeat("=", 60) + "\n")
+		fmt.Printf("🎬 SHOTSTACK COMPOSITION: PRODUCT CENTERED\n")
+		fmt.Printf(strings.Repeat("=", 60) + "\n")
+		fmt.Printf("📦 Product: Fullscreen background (15 seconds)\n")
+		fmt.Printf("👤 Person: Bottom-right corner (15 seconds, looped)\n")
+		fmt.Printf("📹 Person video duration: %.2f seconds\n", avatarDuration)
+		fmt.Printf(strings.Repeat("=", 60) + "\n\n")
+
+		tracks = simpleProductMainTracks(productVideoURL, avatarVideoURL, avatarDuration)
 	} else {
-		// Default fallback: Same as PRODUCT_MAIN - Product fullscreen + Person in bottom-right corner
-		fmt.Printf("📐 Using PRODUCT CENTERED layout: Product fullscreen + Person bottom-right\n")
-		fmt.Printf("   🎥 Product: Fullscreen background (cover fit)\n")
-		fmt.Printf("   👤 Person: Bottom-right corner overlay (30%% scale, always visible)\n")
-		tracks = []interface{}{
-			// Track 0: Product video (BACKGROUND LAYER - fullscreen)
-			map[string]interface{}{
-				"clips": []interface{}{
-					map[string]interface{}{
-						"asset": map[string]interface{}{
-							"type": "video",
-							"src":  productVideoURL,
-						},
-						"start":  0.0,
-						"length": 15.0,    // Full 15 seconds
-						"fit":    "cover", // Fullscreen - fills entire frame
-						"transition": map[string]interface{}{
-							"in": "fade",
-						},
-					},
-				},
-			},
-			// Track 1: Avatar video (TOP LAYER - bottom-right corner)
-			map[string]interface{}{
-				"clips": []interface{}{
-					map[string]interface{}{
-						"asset": map[string]interface{}{
-							"type": "video",
-							"src":  avatarVideoURL,
-						},
-						"start":  0.0,
-						"length": 15.0, // Full 15 seconds (will show for duration of avatar video)
-						"offset": map[string]interface{}{
-							"x": 0.35, // Right side (positive = right, 0.35 = 35% from center to right)
-							"y": 0.35, // Bottom side (positive = bottom, 0.35 = 35% from center to bottom)
-						},
-						"scale":   0.30,      // 30% of screen - small corner overlay
-						"opacity": 1.0,       // Fully opaque
-						"fit":     "contain", // Entire person visible
-						"transition": map[string]interface{}{
-							"in": "fade", // Smooth fade in
-						},
-					},
-				},
-			},
-		}
+		// Default fallback: Same as PRODUCT_MAIN - Simple and clean
+		fmt.Printf("📐 DEFAULT: Product fullscreen + Person bottom-right (15s)\n")
+		fmt.Printf("📹 Person video duration: %.2f seconds\n", avatarDuration)
+
+		tracks = simpleProductMainTracks(productVideoURL, avatarVideoURL, avatarDuration)
 	}
 
 	// Create timeline for picture-in-picture layout
@@ -1014,10 +980,10 @@ func (vg *VideoGenerator) CompositeVideosWithShotstack(productVideoPath, avatarV
 		fmt.Printf("   Track 0 (bottom): Product video (fullscreen background, 15s)\n")
 		fmt.Printf("      URL: %s\n", productVideoURL)
 		fmt.Printf("      Fit: cover (fullscreen)\n")
-		fmt.Printf("   Track 1 (top): Avatar video (bottom-right corner, 30%% scale, 15s)\n")
+		fmt.Printf("   Track 1 (top): Avatar video (bottom-right corner, 40%% scale, 15s)\n")
 		fmt.Printf("      URL: %s\n", avatarVideoURL)
 		fmt.Printf("      Offset: x=0.35 (right), y=0.35 (bottom)\n")
-		fmt.Printf("      Scale: 0.30 (30%%)\n")
+		fmt.Printf("      Scale: 0.40 (40%%)\n")
 		fmt.Printf("      Opacity: 1.0 (fully visible)\n")
 		fmt.Printf("      Fit: contain (preserve aspect ratio)\n")
 	} else if layout == "presenter" || layout == "split" || layout == "dual_highlight" || layout == "avatar_main" {
@@ -1025,9 +991,11 @@ func (vg *VideoGenerator) CompositeVideosWithShotstack(productVideoPath, avatarV
 	} else {
 		fmt.Printf("   Track 0 (bottom): Product video (fullscreen background, 15s)\n")
 		fmt.Printf("      URL: %s\n", productVideoURL)
-		fmt.Printf("   Track 1 (top): Avatar video (bottom-right corner, 30%% scale, 15s)\n")
+		fmt.Printf("   Track 1 (top): Avatar video (bottom-right corner, 40%% scale, 15s)\n")
 		fmt.Printf("      URL: %s\n", avatarVideoURL)
 		fmt.Printf("      Offset: x=0.35 (right), y=0.35 (bottom)\n")
+		fmt.Printf("      Scale: 0.40 (40%%)\n")
+		fmt.Printf("      Opacity: 1.0 (fully visible)\n")
 	}
 
 	// Log full timeline JSON for debugging
@@ -1125,7 +1093,11 @@ func (vg *VideoGenerator) pollShotstackRender(renderID string) (string, error) {
 				return "", fmt.Errorf("no video URL in Shotstack response")
 			}
 
-			fmt.Printf("✅ Final video ready!\n")
+			fmt.Printf("✅ Shotstack render complete!\n")
+			fmt.Printf("🔗 Video URL: %s\n", videoURL)
+			fmt.Printf("📥 Downloading video...\n")
+
+			// Try to download - if it fails, the error message will include the URL for manual download
 			return vg.downloadVideo(videoURL)
 		} else if status == "failed" {
 			return "", fmt.Errorf("shotstack render failed")
@@ -1504,8 +1476,10 @@ func (vg *VideoGenerator) GenerateFullAIPipeline(productImagePath, personMediaPa
 		productVideoStyle = "cinematic" // Default: cinematic for MOST dynamic product showcase
 	}
 	if layout == "" {
-		layout = "product_main" // Default: product-centered with person in bottom-right corner
+		layout = "product_main" // Default: PRODUCT CENTERED - product fullscreen with person in bottom-right
 	}
+
+	fmt.Printf("✅ Layout: %s (Product Centered - Fullscreen product + Person bottom-right)\n", layout)
 
 	fmt.Printf("📋 Configuration:\n")
 	fmt.Printf("   Product Video Style: %s\n", productVideoStyle)
@@ -2025,11 +1999,48 @@ func (vg *VideoGenerator) pollSynthesiaTask(videoID string) (string, error) {
 }
 
 func (vg *VideoGenerator) downloadVideo(url string) (string, error) {
-	resp, err := vg.client.Get(url)
+	fmt.Printf("📥 Downloading video from: %s\n", url)
+	fmt.Printf("💡 If download fails, you can manually download from the URL above\n")
+
+	// Create a client with longer timeout for large video downloads (5 minutes)
+	downloadClient := &http.Client{
+		Timeout: 5 * time.Minute,
+		Transport: &http.Transport{
+			ResponseHeaderTimeout: 30 * time.Second,
+			IdleConnTimeout:       90 * time.Second,
+		},
+	}
+
+	// Retry up to 3 times with exponential backoff
+	maxRetries := 3
+	var resp *http.Response
+	var err error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fmt.Printf("📥 Download attempt %d/%d...\n", attempt, maxRetries)
+
+		resp, err = downloadClient.Get(url)
+		if err == nil {
+			break
+		}
+
+		fmt.Printf("⚠️  Download attempt %d failed: %v\n", attempt, err)
+
+		if attempt < maxRetries {
+			waitTime := time.Duration(attempt*2) * time.Second
+			fmt.Printf("⏳ Retrying in %v...\n", waitTime)
+			time.Sleep(waitTime)
+		}
+	}
+
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to download video after %d attempts: %v\n\n💡 MANUAL DOWNLOAD: You can download the video directly from:\n%s", maxRetries, err, url)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status %s\n\n💡 MANUAL DOWNLOAD: You can download the video directly from:\n%s", resp.Status, url)
+	}
 
 	// Create output file
 	os.MkdirAll(vg.config.GeneratedVideoPath, 0755)
@@ -2038,15 +2049,19 @@ func (vg *VideoGenerator) downloadVideo(url string) (string, error) {
 
 	outFile, err := os.Create(outputPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create output file: %v\n\n💡 MANUAL DOWNLOAD: You can download the video directly from:\n%s", err, url)
 	}
 	defer outFile.Close()
 
-	_, err = io.Copy(outFile, resp.Body)
+	fmt.Printf("💾 Saving video to: %s\n", outputPath)
+
+	// Copy with progress tracking
+	written, err := io.Copy(outFile, resp.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to save video: %v\n\n💡 MANUAL DOWNLOAD: You can download the video directly from:\n%s", err, url)
 	}
 
+	fmt.Printf("✅ Video downloaded successfully! Size: %.2f MB\n", float64(written)/(1024*1024))
 	return outputPath, nil
 }
 
