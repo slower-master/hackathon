@@ -31,6 +31,7 @@ func Setup(h *handlers.Handlers) *gin.Engine {
 		api.GET("/projects/:id", h.GetProject)
 		api.POST("/projects/:id/generate-video", h.GenerateVideo)
 		api.POST("/projects/:id/generate-website", h.GenerateWebsite)
+		api.POST("/projects/:id/upload-to-instagram", h.UploadToInstagram)
 	}
 
 	// Serve static files (generated videos and websites)

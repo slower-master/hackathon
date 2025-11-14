@@ -23,8 +23,12 @@ func NewAIService(cfg *config.Config) *AIService {
 }
 
 // GenerateVideo generates a promotional video combining product image and person media
-// productVideoStyle: "rotation", "zoom", "pan", "reveal", "auto" (default: "auto")
-// layout: "product_main" (product fullscreen + avatar overlay) or "avatar_main" (avatar fullscreen + product overlay) (default: "product_main")
+// productVideoStyle: "rotation", "zoom", "pan", "reveal", "auto" (default: "rotation")
+// layout options (default: "presenter"):
+//   - "presenter" (RECOMMENDED): Person 60% left, product 40% right - looks like real product explanation
+//   - "split": Side-by-side 50/50 - balanced, professional
+//   - "product_main": Product fullscreen + avatar overlay (traditional)
+//   - "avatar_main": Avatar fullscreen + product overlay
 func (s *AIService) GenerateVideo(productImagePath, personMediaPath, personMediaType, customScript, productVideoStyle, layout string) (string, error) {
 	// Create output directory
 	os.MkdirAll(s.config.GeneratedVideoPath, 0755)
@@ -33,13 +37,13 @@ func (s *AIService) GenerateVideo(productImagePath, personMediaPath, personMedia
 	switch s.config.AIProvider {
 	case "runwayml":
 		return s.videoGenerator.GenerateWithRunwayML(productImagePath, personMediaPath, customScript)
-	
+
 	case "did":
 		return s.videoGenerator.GenerateWithDID(productImagePath, personMediaPath, customScript, productVideoStyle, layout)
-	
+
 	case "synthesia":
 		return s.videoGenerator.GenerateWithSynthesia(productImagePath, customScript)
-	
+
 	case "mock":
 		fallthrough
 	default:
@@ -85,19 +89,77 @@ func (s *AIService) GenerateWebsite(project models.Project) (string, error) {
 
 // generateWebsiteFiles creates HTML, CSS, and JS files for the website
 func (s *AIService) generateWebsiteFiles(project models.Project, websiteDir string) error {
-	// Generate URLs for static assets
+	// Generate URLs for static assets (use actual uploaded files)
 	productImageURL := fmt.Sprintf("/static/uploads/%s", filepath.Base(project.ProductImagePath))
 	videoURL := ""
 	if project.GeneratedVideoPath != "" {
 		videoURL = fmt.Sprintf("/static/generated/videos/%s", filepath.Base(project.GeneratedVideoPath))
 	}
 
-	// Generate professional marketing website HTML
+	// Use actual product details from the project
+	productName := project.ProductName
+	if productName == "" {
+		productName = "Amazing Product"
+	}
+	
+	productDescription := project.ProductDescription
+	if productDescription == "" {
+		productDescription = "Transform your experience with our innovative solution"
+	}
+
+	// Generate AI features using Gemini
+	fmt.Printf("\n🤖 Generating AI features for website with Gemini...\n")
+	var features []map[string]string
+	geminiAPIKey := os.Getenv("GOOGLE_GEMINI_API_KEY")
+	if geminiAPIKey == "" {
+		geminiAPIKey = os.Getenv("GEMINI_API_KEY")
+	}
+	
+	if geminiAPIKey != "" {
+		geminiService := NewGeminiService(geminiAPIKey)
+		aiFeatures, err := geminiService.GenerateWebsiteFeatures(productName, productDescription, project.ProductCategory, project.ProductPrice)
+		if err != nil {
+			fmt.Printf("⚠️  Gemini features generation failed: %v, using defaults\n", err)
+			features = getDefaultFeatures()
+		} else {
+			features = aiFeatures
+			fmt.Printf("✅ Generated %d AI features\n", len(features))
+		}
+	} else {
+		fmt.Printf("ℹ️  No Gemini API key, using default features\n")
+		features = getDefaultFeatures()
+	}
+
+	// Check if we should use v0.dev style generation
+	useV0Style := os.Getenv("USE_V0_STYLE")
+	
+	if useV0Style == "true" || useV0Style == "1" {
+		fmt.Printf("🌐 Using v0.dev style website generation...\n")
+		
+		// Use v0.dev service for modern website generation
+		v0Service := NewV0Service("")
+		v0WebsiteDir, err := v0Service.GenerateWebsite(
+			productName,
+			productDescription,
+			project.ProductPrice,
+			productImageURL,
+			videoURL,
+			features,
+		)
+		if err == nil {
+			// Copy generated files to target directory
+			return s.copyWebsiteFiles(v0WebsiteDir, websiteDir)
+		}
+		fmt.Printf("⚠️  v0.dev generation failed, using default template\n")
+	}
+
+	// Generate professional marketing website HTML with dynamic product details and AI features
 	htmlContent := MarketingWebsiteTemplate(
-		"Amazing Product",
-		"Transform your experience with our innovative solution",
+		productName,
+		productDescription,
 		videoURL,
 		productImageURL,
+		features,
 	)
 
 	if err := os.WriteFile(filepath.Join(websiteDir, "index.html"), []byte(htmlContent), 0644); err != nil {
@@ -114,6 +176,29 @@ func (s *AIService) generateWebsiteFiles(project models.Project, websiteDir stri
 	jsContent := InteractiveJS()
 	if err := os.WriteFile(filepath.Join(websiteDir, "script.js"), []byte(jsContent), 0644); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// copyWebsiteFiles copies generated website files from source to target directory
+func (s *AIService) copyWebsiteFiles(sourceDir, targetDir string) error {
+	files := []string{"index.html", "styles.css", "script.js"}
+	
+	for _, filename := range files {
+		sourcePath := filepath.Join(sourceDir, filename)
+		targetPath := filepath.Join(targetDir, filename)
+		
+		// Read source file
+		data, err := os.ReadFile(sourcePath)
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %v", filename, err)
+		}
+		
+		// Write to target
+		if err := os.WriteFile(targetPath, data, 0644); err != nil {
+			return fmt.Errorf("failed to write %s: %v", filename, err)
+		}
 	}
 
 	return nil

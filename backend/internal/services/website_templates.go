@@ -5,8 +5,27 @@ import (
 	"time"
 )
 
+// getDefaultFeatures returns default features if Gemini fails
+func getDefaultFeatures() []map[string]string {
+	return []map[string]string{
+		{"icon": "🚀", "title": "Lightning Fast", "description": "Experience unparalleled speed and efficiency that transforms your workflow instantly."},
+		{"icon": "💎", "title": "Premium Quality", "description": "Built with the finest materials and cutting-edge technology for lasting excellence."},
+		{"icon": "🔒", "title": "Secure & Reliable", "description": "Your data and privacy are protected with enterprise-grade security measures."},
+		{"icon": "⚡", "title": "Easy to Use", "description": "Intuitive design that anyone can master in minutes, no learning curve required."},
+	}
+}
+
+// getDefaultFeature returns a default feature by index
+func getDefaultFeature(index int) map[string]string {
+	defaults := getDefaultFeatures()
+	if index < len(defaults) {
+		return defaults[index]
+	}
+	return map[string]string{"icon": "✨", "title": "Feature", "description": "Experience the difference."}
+}
+
 // MarketingWebsiteTemplate generates professional marketing website HTML
-func MarketingWebsiteTemplate(productName, productDescription, videoURL, productImageURL string) string {
+func MarketingWebsiteTemplate(productName, productDescription, videoURL, productImageURL string, features []map[string]string) string {
 	if productName == "" {
 		productName = "Amazing Product"
 	}
@@ -60,26 +79,7 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
         <div class="container">
             <h2 class="section-title">Why Choose %s?</h2>
             <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🚀</div>
-                    <h3>Lightning Fast</h3>
-                    <p>Experience unparalleled speed and efficiency that transforms your workflow.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💎</div>
-                    <h3>Premium Quality</h3>
-                    <p>Built with the finest materials and cutting-edge technology.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔒</div>
-                    <h3>Secure & Reliable</h3>
-                    <p>Your data and privacy are our top priorities.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Easy to Use</h3>
-                    <p>Intuitive design that anyone can master in minutes.</p>
-                </div>
+                %s
             </div>
         </div>
     </section>
@@ -143,7 +143,7 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; %d %s. All rights reserved. | Powered by AI Marketing Agent</p>
+                <p>&copy; %s %s. All rights reserved. | Powered by AI Marketing Agent</p>
             </div>
         </div>
     </footer>
@@ -158,7 +158,32 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
 		productDescription,
 		productImageURL,
 		productName,
-		productName,
+		func() string {
+			featuresHTML := ""
+			if len(features) == 0 {
+				features = getDefaultFeatures()
+			}
+			for _, feature := range features {
+				icon := feature["icon"]
+				if icon == "" {
+					icon = "✨"
+				}
+				title := feature["title"]
+				if title == "" {
+					title = "Feature"
+				}
+				description := feature["description"]
+				if description == "" {
+					description = "Experience the difference."
+				}
+				featuresHTML += fmt.Sprintf(`<div class="feature-card">
+                    <div class="feature-icon">%s</div>
+                    <h3>%s</h3>
+                    <p>%s</p>
+                </div>`, icon, title, description)
+			}
+			return featuresHTML
+		}(),
 		func() string {
 			if videoURL != "" {
 				return fmt.Sprintf(`<video controls class="promo-video" poster="%s">
@@ -171,7 +196,7 @@ func MarketingWebsiteTemplate(productName, productDescription, videoURL, product
                 </div>`
 		}(),
 		productName,
-		time.Now().Year(),
+		fmt.Sprintf("%d", time.Now().Year()),
 		productName,
 	)
 }
@@ -367,17 +392,20 @@ body {
 
 .features-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .feature-card {
     background: var(--white);
-    padding: 2rem;
-    border-radius: 15px;
+    padding: 1.5rem;
+    border-radius: 12px;
     text-align: center;
     transition: transform 0.3s, box-shadow 0.3s;
     box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    min-height: 200px;
 }
 
 .feature-card:hover {
@@ -386,18 +414,21 @@ body {
 }
 
 .feature-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
 }
 
 .feature-card h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
     color: var(--text-dark);
 }
 
 .feature-card p {
     color: var(--text-light);
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 /* Video Section */
@@ -519,7 +550,15 @@ body {
     }
     
     .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .features-grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
     }
     
     .nav-menu {

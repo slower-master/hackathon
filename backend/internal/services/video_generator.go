@@ -109,7 +109,7 @@ func (vg *VideoGenerator) uploadToDID(imagePath string) (string, error) {
 
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi")
+	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:dK2lCEnxK6fw7PUMUSrJD")
 
 	resp, err := vg.client.Do(req)
 	if err != nil {
@@ -141,18 +141,13 @@ func (vg *VideoGenerator) uploadToDID(imagePath string) (string, error) {
 
 // generateMarketingScript creates an enhanced marketing script
 func (vg *VideoGenerator) generateMarketingScript(customScript string) string {
-	// If custom script is provided, enhance it
-	if customScript != "" {
-		// Add engaging introduction and call-to-action
-		enhancedScript := fmt.Sprintf(
-			"Hello! I'm excited to share something amazing with you today. %s This product is designed to make your life easier and better. Don't miss out on this incredible opportunity - get yours today and experience the difference!",
-			customScript,
-		)
-		return enhancedScript
+	// If custom script is provided, use it as-is (don't overwrite!)
+	if customScript != "" && strings.TrimSpace(customScript) != "" {
+		return strings.TrimSpace(customScript)
 	}
 
-	// Default marketing script
-	return "Hello! Welcome to our amazing product showcase. This innovative solution is designed specifically for you, combining quality, style, and functionality. It's perfect for anyone looking to upgrade their experience. Join thousands of satisfied customers who have already made the smart choice. Order now and transform the way you live. Don't wait - this is your chance to experience excellence!"
+	// Default marketing script - More dynamic and engaging!
+	return "Hey there! I'm thrilled to introduce you to something truly special today. This incredible product is a game-changer - it combines cutting-edge innovation with stunning design. Whether you're looking for quality, performance, or style, this product delivers on all fronts. Thousands of customers are already loving it, and I know you will too. Don't miss out on this amazing opportunity. Get yours today and experience the difference for yourself. Trust me, you're going to love it!"
 }
 
 // generateProductVideoWithDID generates a product showcase video using D-ID API
@@ -203,7 +198,7 @@ func (vg *VideoGenerator) generateProductVideoWithDID(productImagePath, productV
 		"input": videoScript,
 		"provider": map[string]interface{}{
 			"type":     "microsoft",
-			"voice_id": "en-US-JennyNeural", // Professional, clear voice
+			"voice_id": "en-US-GuyNeural", // Professional, clear male voice
 		},
 	}
 
@@ -211,9 +206,10 @@ func (vg *VideoGenerator) generateProductVideoWithDID(productImagePath, productV
 		"source_url": sourceURL,
 		"script":     script,
 		"config": map[string]interface{}{
-			"fluent":    true,
-			"pad_audio": 0,
-			"stitch":    true, // Better video quality
+			"fluent":        true,
+			"pad_audio":     0,
+			"stitch":        true,  // Better video quality
+			"result_format": "mp4", // MP4 format (D-ID only supports mp4/mov)
 		},
 	}
 
@@ -226,7 +222,7 @@ func (vg *VideoGenerator) generateProductVideoWithDID(productImagePath, productV
 
 	req.Header.Set("Content-Type", "application/json")
 	// D-ID API key (using same auth as other D-ID calls)
-	req.Header.Set("Authorization", "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi")
+	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:dK2lCEnxK6fw7PUMUSrJD")
 
 	fmt.Printf("📤 Calling D-ID API for product video...\n")
 	fmt.Printf("   Source URL: %s\n", sourceURL)
@@ -305,13 +301,25 @@ func (vg *VideoGenerator) generateProductVideoWithRunwayML(productImagePath, pro
 		promptText = "Professional product showcase with smooth camera pan movement, exploring product from different angles, studio lighting, premium commercial feel, 4K quality"
 	case "reveal":
 		promptText = "Professional product reveal with dramatic lighting, product emerging from shadows, cinematic reveal, premium commercial feel, 4K quality"
+	case "cinematic":
+		// NEW: Cinematic camera movement with dynamic zoom and rotation
+		promptText = "Cinematic product showcase with smooth dolly zoom, dramatic camera movement, elegant rotation combined with zoom, professional studio lighting, premium commercial cinematography, 4K Hollywood quality, dynamic composition"
+	case "showcase":
+		// NEW: Full 360° rotation with dramatic close-ups
+		promptText = "Premium product showcase with complete 360-degree rotation, smooth transition to close-up details, studio spotlight lighting, elegant product presentation, 4K commercial quality, professional product photography style"
+	case "hero":
+		// NEW: Epic hero product shot with dramatic reveal
+		promptText = "Epic hero product shot, dramatic zoom out from close-up detail to full product view, cinematic lighting with lens flares, premium commercial feel, 4K Hollywood cinematography, impressive product reveal"
+	case "premium":
+		// NEW: Slow motion premium rotation
+		promptText = "Luxury premium product presentation, slow motion elegant rotation, soft studio lighting with highlights, sophisticated commercial style, 4K high-end quality, refined product showcase"
 	case "auto":
 		// Auto-detect based on image analysis (simple heuristic)
-		// For now, use rotation as default (works well for most products)
-		promptText = "Professional product showcase with smooth camera movement, elegant rotation, studio lighting, premium commercial feel, 4K quality, product centered"
+		// For now, use cinematic as default (most dynamic!)
+		promptText = "Cinematic product showcase with smooth camera movement, elegant rotation with zoom, studio lighting, premium commercial feel, 4K quality, dynamic and engaging"
 	default:
-		// Default to rotation
-		promptText = "Professional product showcase with smooth 360-degree rotation, studio lighting, elegant spin, premium commercial feel, 4K quality, product centered"
+		// Default to cinematic (most dynamic)
+		promptText = "Cinematic product showcase with smooth camera movement, elegant rotation with zoom, studio lighting, premium commercial feel, 4K quality, dynamic and engaging"
 	}
 
 	fmt.Printf("📹 Product video style: %s\n", productVideoStyle)
@@ -331,6 +339,9 @@ func (vg *VideoGenerator) generateProductVideoWithRunwayML(productImagePath, pro
 
 	payloadBytes, _ := json.Marshal(payload)
 
+	// Log payload size (not full content to avoid huge logs)
+	fmt.Printf("📦 Payload size: %d bytes (image: %d bytes)\n", len(payloadBytes), len(base64Image))
+
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return "", fmt.Errorf("failed to create RunwayML request: %v", err)
@@ -342,32 +353,72 @@ func (vg *VideoGenerator) generateProductVideoWithRunwayML(productImagePath, pro
 		runwayAPIKey = vg.config.RunwayMLAPIKey // We'll add this to config
 	}
 
+	if runwayAPIKey == "" {
+		return "", fmt.Errorf("runwayML API key not configured (set RUNWAYML_API_KEY environment variable)")
+	}
+
+	fmt.Printf("🔑 API Key: %s...%s (%d chars)\n", runwayAPIKey[:8], runwayAPIKey[len(runwayAPIKey)-4:], len(runwayAPIKey))
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+runwayAPIKey)
 	req.Header.Set("X-Runway-Version", "2024-11-06")
 
-	fmt.Printf("📤 Calling RunwayML API...\n")
+	fmt.Printf("📤 Calling RunwayML API: POST %s\n", apiURL)
+	fmt.Printf("   Model: %s\n", payload["model"])
+	fmt.Printf("   Duration: %v seconds\n", payload["duration"])
+	fmt.Printf("   Ratio: %s\n", payload["ratio"])
 
 	resp, err := vg.client.Do(req)
 	if err != nil {
+		fmt.Printf("❌ RunwayML API request failed: %v\n", err)
 		return "", fmt.Errorf("RunwayML API request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, _ := io.ReadAll(resp.Body)
 
+	fmt.Printf("📥 Response status: %s\n", resp.Status)
+	fmt.Printf("📥 Response body length: %d bytes\n", len(bodyBytes))
+
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		fmt.Printf("❌ RunwayML API error response:\n")
+		fmt.Printf("   Status: %s\n", resp.Status)
+		fmt.Printf("   Body: %s\n", string(bodyBytes))
+
+		// Try to parse error response
+		var errorResult map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &errorResult); err == nil {
+			errorJSON, _ := json.MarshalIndent(errorResult, "", "  ")
+			fmt.Printf("   Parsed error:\n%s\n", string(errorJSON))
+
+			// Extract error message
+			if msg, ok := errorResult["message"].(string); ok {
+				return "", fmt.Errorf("RunwayML API error (%s): %s", resp.Status, msg)
+			}
+			if errorField, ok := errorResult["error"].(string); ok {
+				return "", fmt.Errorf("RunwayML API error (%s): %s", resp.Status, errorField)
+			}
+		}
+
 		return "", fmt.Errorf("RunwayML API error (%s): %s", resp.Status, string(bodyBytes))
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		fmt.Printf("❌ Failed to parse RunwayML response: %v\n", err)
+		fmt.Printf("   Response body: %s\n", string(bodyBytes))
 		return "", fmt.Errorf("failed to parse RunwayML response: %v", err)
 	}
+
+	// Log full response for debugging
+	responseJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Printf("📋 RunwayML API response:\n%s\n", string(responseJSON))
 
 	// Get task ID for polling
 	taskID, ok := result["id"].(string)
 	if !ok {
+		fmt.Printf("❌ No task ID in RunwayML response\n")
+		fmt.Printf("   Full response: %s\n", string(responseJSON))
 		return "", fmt.Errorf("no task ID in RunwayML response: %v", result)
 	}
 
@@ -386,68 +437,205 @@ func (vg *VideoGenerator) pollRunwayMLTask(taskID string) (string, error) {
 		runwayAPIKey = vg.config.RunwayMLAPIKey
 	}
 
+	if runwayAPIKey == "" {
+		return "", fmt.Errorf("runwayML API key not configured")
+	}
+
+	fmt.Printf("🔍 Polling RunwayML task: %s\n", taskID)
+	fmt.Printf("   API URL: %s\n", apiURL)
+
 	// Poll for up to 5 minutes
 	for i := 0; i < 60; i++ {
 		time.Sleep(5 * time.Second)
 
-		req, _ := http.NewRequest("GET", apiURL, nil)
+		req, err := http.NewRequest("GET", apiURL, nil)
+		if err != nil {
+			fmt.Printf("⚠️  Failed to create poll request: %v\n", err)
+			continue
+		}
+
 		req.Header.Set("Authorization", "Bearer "+runwayAPIKey)
 		req.Header.Set("X-Runway-Version", "2024-11-06")
 
+		fmt.Printf("   Poll %d/60: GET %s\n", i+1, apiURL)
+
 		resp, err := vg.client.Do(req)
 		if err != nil {
-			fmt.Printf("⚠️  Poll error: %v\n", err)
+			fmt.Printf("⚠️  Poll request failed: %v\n", err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+
+		fmt.Printf("   Response status: %s\n", resp.Status)
+
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf("❌ Poll error (%s): %s\n", resp.Status, string(bodyBytes))
+			if i == 0 {
+				// On first poll error, return immediately with details
+				return "", fmt.Errorf("RunwayML poll failed (%s): %s", resp.Status, string(bodyBytes))
+			}
 			continue
 		}
 
 		var result map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&result)
-		resp.Body.Close()
+		if err := json.Unmarshal(bodyBytes, &result); err != nil {
+			fmt.Printf("⚠️  Failed to parse poll response: %v\n", err)
+			fmt.Printf("   Response body: %s\n", string(bodyBytes))
+			continue
+		}
 
-		status, _ := result["status"].(string)
-		fmt.Printf("   Poll %d/60: Status = %s\n", i+1, status)
+		// Log full response for first few polls
+		if i < 3 {
+			responseJSON, _ := json.MarshalIndent(result, "", "  ")
+			fmt.Printf("📋 Poll response:\n%s\n", string(responseJSON))
+		}
+
+		status, ok := result["status"].(string)
+		if !ok {
+			fmt.Printf("⚠️  No status in response: %v\n", result)
+			// Log full response when status is missing
+			responseJSON, _ := json.MarshalIndent(result, "", "  ")
+			fmt.Printf("   Full response: %s\n", string(responseJSON))
+			continue
+		}
+
+		fmt.Printf("   Status: %s\n", status)
 
 		if status == "SUCCEEDED" {
 			// Get video URL
 			outputs, ok := result["output"].([]interface{})
 			if !ok || len(outputs) == 0 {
-				return "", fmt.Errorf("no output in RunwayML response")
+				responseJSON, _ := json.MarshalIndent(result, "", "  ")
+				return "", fmt.Errorf("no output in RunwayML response. Full response: %s", string(responseJSON))
 			}
 
 			videoURL, ok := outputs[0].(string)
 			if !ok {
-				return "", fmt.Errorf("invalid video URL format")
+				responseJSON, _ := json.MarshalIndent(result, "", "  ")
+				return "", fmt.Errorf("invalid video URL format. Full response: %s", string(responseJSON))
 			}
 
-			fmt.Printf("✅ Product video ready!\n")
+			fmt.Printf("✅ Product video ready! URL: %s\n", videoURL)
 			return vg.downloadVideo(videoURL)
 		} else if status == "FAILED" {
-			errMsg, _ := result["failure"].(string)
+			// Log the entire response for debugging
+			fullResponse, _ := json.MarshalIndent(result, "", "  ")
+			fmt.Printf("❌ RunwayML FAILED - Full Response:\n%s\n", string(fullResponse))
+
+			// Try to extract error details
+			errMsg := "An unexpected error occurred."
+			errDetails := []string{}
+
+			// Check multiple possible error fields
+			if failure, ok := result["failure"].(string); ok && failure != "" {
+				errMsg = failure
+				errDetails = append(errDetails, fmt.Sprintf("failure: %s", failure))
+			} else if failureMap, ok := result["failure"].(map[string]interface{}); ok {
+				if msg, ok := failureMap["message"].(string); ok {
+					errMsg = msg
+					errDetails = append(errDetails, fmt.Sprintf("failure.message: %s", msg))
+				}
+				if code, ok := failureMap["code"].(string); ok {
+					errDetails = append(errDetails, fmt.Sprintf("failure.code: %s", code))
+				}
+				if errType, ok := failureMap["type"].(string); ok {
+					errDetails = append(errDetails, fmt.Sprintf("failure.type: %s", errType))
+				}
+			}
+
+			if reason, ok := result["failureReason"].(string); ok && reason != "" {
+				errMsg = reason
+				errDetails = append(errDetails, fmt.Sprintf("failureReason: %s", reason))
+			}
+
+			if errorField, ok := result["error"].(string); ok && errorField != "" {
+				errMsg = errorField
+				errDetails = append(errDetails, fmt.Sprintf("error: %s", errorField))
+			}
+
+			if errorMap, ok := result["error"].(map[string]interface{}); ok {
+				if msg, ok := errorMap["message"].(string); ok {
+					errMsg = msg
+					errDetails = append(errDetails, fmt.Sprintf("error.message: %s", msg))
+				}
+			}
+
+			// Log all error details
+			if len(errDetails) > 0 {
+				fmt.Printf("📋 Error Details:\n")
+				for _, detail := range errDetails {
+					fmt.Printf("   - %s\n", detail)
+				}
+			}
+
 			return "", fmt.Errorf("RunwayML generation failed: %s", errMsg)
+		} else if status == "PENDING" || status == "IN_PROGRESS" || status == "PROCESSING" {
+			// Continue polling
+			fmt.Printf("   ⏳ Still processing... (status: %s)\n", status)
+		} else {
+			// Unknown status
+			fmt.Printf("⚠️  Unknown status: %s\n", status)
+			responseJSON, _ := json.MarshalIndent(result, "", "  ")
+			fmt.Printf("   Full response: %s\n", string(responseJSON))
 		}
 	}
 
-	return "", fmt.Errorf("RunwayML generation timeout")
+	return "", fmt.Errorf("RunwayML generation timeout after 5 minutes")
 }
 
-// compositeVideosWithShotstack composites avatar and product videos using Shotstack API
-// layout: "product_main" (product fullscreen + avatar overlay) or "avatar_main" (avatar fullscreen + product overlay)
-func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarVideoPath, layout string) (string, error) {
+// CompositeVideosWithShotstack composites avatar and product videos using Shotstack API
+// layout options:
+// - "presenter" (RECOMMENDED): Person left (60%), product right (40%) - looks like real product explanation
+// - "split" : Side-by-side 50/50 - balanced, professional
+// - "dual_highlight": Person and product side-by-side with borders and highlights - both equally showcased
+// - "product_main": Product fullscreen + avatar overlay (traditional)
+// - "avatar_main": Avatar fullscreen + product overlay
+func (vg *VideoGenerator) CompositeVideosWithShotstack(productVideoPath, avatarVideoPath, layout string) (string, error) {
 	fmt.Printf("\n🎨 Compositing videos with Shotstack API...\n")
 	fmt.Printf("📐 Layout: %s\n", layout)
 
-	// Upload videos to public URLs (we'll use file.io for temporary hosting)
-	productVideoURL, err := vg.uploadToFileIO(productVideoPath)
+	// Shotstack requires publicly accessible URLs
+	// Try multiple upload services with fallback
+	fmt.Printf("📤 Uploading videos to public hosting...\n")
+
+	productVideoURL, err := vg.uploadWithFallback(productVideoPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload product video: %v", err)
 	}
 
-	avatarVideoURL, err := vg.uploadToFileIO(avatarVideoPath)
+	avatarVideoURL, err := vg.uploadWithFallback(avatarVideoPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload avatar video: %v", err)
 	}
 
 	fmt.Printf("📤 Videos uploaded:\n   Product: %s\n   Avatar: %s\n", productVideoURL, avatarVideoURL)
+
+	// Log video file paths for debugging
+	fmt.Printf("📁 Local video files:\n   Product: %s\n   Avatar: %s\n", productVideoPath, avatarVideoPath)
+
+	// Verify both videos exist locally
+	if _, err := os.Stat(productVideoPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("product video file does not exist: %s", productVideoPath)
+	}
+	if _, err := os.Stat(avatarVideoPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("avatar video file does not exist: %s", avatarVideoPath)
+	}
+	fmt.Printf("✅ Both video files exist locally\n")
+
+	// Verify both URLs are accessible (quick HEAD request)
+	fmt.Printf("🔍 Verifying video URLs are accessible...\n")
+	if resp, err := vg.client.Head(productVideoURL); err != nil || resp.StatusCode != http.StatusOK {
+		fmt.Printf("⚠️  Warning: Product video URL may not be accessible: %s\n", productVideoURL)
+	} else {
+		fmt.Printf("✅ Product video URL accessible\n")
+	}
+	if resp, err := vg.client.Head(avatarVideoURL); err != nil || resp.StatusCode != http.StatusOK {
+		fmt.Printf("⚠️  Warning: Avatar video URL may not be accessible: %s\n", avatarVideoURL)
+	} else {
+		fmt.Printf("✅ Avatar video URL accessible\n")
+	}
 
 	// Shotstack API endpoint
 	apiURL := "https://api.shotstack.io/v1/render"
@@ -455,11 +643,13 @@ func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarV
 	// Determine layout based on parameter
 	var tracks []interface{}
 
-	if layout == "avatar_main" {
-		// Avatar as main (fullscreen), Product as overlay
-		fmt.Printf("📐 Using layout: Avatar fullscreen + Product overlay\n")
+	if layout == "presenter" {
+		// PRESENTER LAYOUT - Professional product explanation style
+		// Person on left (60%), Product on right (40%) - looks like real presenter explaining product
+		fmt.Printf("📐 Using PRESENTER layout: Person (60%% left) + Product (40%% right)\n")
+		fmt.Printf("   🎯 This looks like a real person explaining the product!\n")
 		tracks = []interface{}{
-			// Track 1: Avatar video (main/background - fullscreen)
+			// Track 0: Avatar video (LEFT SIDE - 60% width)
 			map[string]interface{}{
 				"clips": []interface{}{
 					map[string]interface{}{
@@ -467,13 +657,23 @@ func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarV
 							"type": "video",
 							"src":  avatarVideoURL,
 						},
-						"start":  0,
-						"length": 15,
-						"fit":    "cover",
+						"start":    0,
+						"length":   15,
+						"position": "left",
+						"offset": map[string]interface{}{
+							"x": 0.15, // Centered in left half
+							"y": 0.0,
+						},
+						"scale":   0.6, // 60% of screen width
+						"opacity": 1.0,
+						"fit":     "contain",
+						"transition": map[string]interface{}{
+							"in": "fade",
+						},
 					},
 				},
 			},
-			// Track 2: Product video (overlay in corner)
+			// Track 1: Product video (RIGHT SIDE - 40% width) - WITH DYNAMIC ZOOM
 			map[string]interface{}{
 				"clips": []interface{}{
 					map[string]interface{}{
@@ -483,21 +683,273 @@ func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarV
 						},
 						"start":    0,
 						"length":   15,
-						"position": "bottomRight",
+						"position": "right",
 						"offset": map[string]interface{}{
-							"x": -0.02,
-							"y": -0.02,
+							"x": -0.10, // Centered in right area
+							"y": 0.0,
 						},
-						"scale": 0.3, // Product takes 30% of screen
+						"scale":   0.4, // 40% of screen
+						"opacity": 1.0,
+						"fit":     "contain",
+						"transition": map[string]interface{}{
+							"in": "zoom",
+						},
+						"effect": "zoomIn",
+					},
+				},
+			},
+		}
+	} else if layout == "split" {
+		// SPLIT SCREEN LAYOUT - Side by side 50/50
+		// Equal prominence, professional and balanced
+		fmt.Printf("📐 Using SPLIT SCREEN layout: Person (50%% left) + Product (50%% right)\n")
+		fmt.Printf("   🎯 Balanced side-by-side presentation\n")
+		tracks = []interface{}{
+			// Track 0: Avatar video (LEFT HALF)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "video",
+							"src":  avatarVideoURL,
+						},
+						"start":    0,
+						"length":   15,
+						"position": "left",
+						"offset": map[string]interface{}{
+							"x": 0.125, // Quarter from left = centered in left half
+							"y": 0.0,
+						},
+						"scale":   0.5, // 50% of screen
+						"opacity": 1.0,
+						"fit":     "contain",
+						"transition": map[string]interface{}{
+							"in": "slideLeft",
+						},
+					},
+				},
+			},
+			// Track 1: Product video (RIGHT HALF) - SLIDES IN
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "video",
+							"src":  productVideoURL,
+						},
+						"start":    0,
+						"length":   15,
+						"position": "right",
+						"offset": map[string]interface{}{
+							"x": -0.125, // Quarter from right = centered in right half
+							"y": 0.0,
+						},
+						"scale":   0.5, // 50% of screen
+						"opacity": 1.0,
+						"fit":     "contain",
+						"transition": map[string]interface{}{
+							"in": "slideRight",
+						},
+					},
+				},
+			},
+		}
+	} else if layout == "dual_highlight" {
+		// DUAL HIGHLIGHT LAYOUT - Both person and product highlighted equally
+		// Side-by-side with visual borders and effects - integrated, not overlaid
+		fmt.Printf("📐 Using DUAL HIGHLIGHT layout: Person + Product both highlighted equally\n")
+		fmt.Printf("   🎯 Integrated presentation with visual highlights\n")
+		tracks = []interface{}{
+			// Track 0: Person border/highlight (LEFT)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "html",
+							"html": "<div style='width: 100%; height: 100%; border: 8px solid #FFD700; border-radius: 20px; box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);'></div>",
+						},
+						"start":    0,
+						"length":   15,
+						"position": "left",
+						"offset": map[string]interface{}{
+							"x": 0.13,
+							"y": 0.0,
+						},
+						"scale":   0.48,
+						"opacity": 0.9,
+					},
+				},
+			},
+			// Track 1: Avatar video (LEFT HALF)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "video",
+							"src":  avatarVideoURL,
+						},
+						"start":    0,
+						"length":   15,
+						"position": "left",
+						"offset": map[string]interface{}{
+							"x": 0.13, // Centered in left half
+							"y": 0.0,
+						},
+						"scale":   0.45, // 45% of screen
+						"opacity": 1.0,
+						"fit":     "contain",
+						"transition": map[string]interface{}{
+							"in": "fade",
+						},
+					},
+				},
+			},
+			// Track 2: Product border/highlight (RIGHT)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "html",
+							"html": "<div style='width: 100%; height: 100%; border: 8px solid #00BFFF; border-radius: 20px; box-shadow: 0 0 40px rgba(0, 191, 255, 0.8);'></div>",
+						},
+						"start":    0,
+						"length":   15,
+						"position": "right",
+						"offset": map[string]interface{}{
+							"x": -0.13,
+							"y": 0.0,
+						},
+						"scale":   0.48,
+						"opacity": 0.9,
+					},
+				},
+			},
+			// Track 3: Product video (RIGHT HALF)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "video",
+							"src":  productVideoURL,
+						},
+						"start":    0,
+						"length":   15,
+						"position": "right",
+						"offset": map[string]interface{}{
+							"x": -0.13, // Centered in right half
+							"y": 0.0,
+						},
+						"scale":   0.45, // 45% of screen
+						"opacity": 1.0,
+						"fit":     "contain",
+						"transition": map[string]interface{}{
+							"in": "fade",
+						},
+					},
+				},
+			},
+		}
+	} else if layout == "avatar_main" {
+		// AVATAR_MAIN LAYOUT - PERSON FOCUSED with SMOOTH natural integration!
+		fmt.Printf("📐 Using PERSON FOCUSED layout: Avatar fullscreen + Product (smooth, centered, natural blend)\n")
+		fmt.Printf("   🎯 Person is the star! Product integrated seamlessly\n")
+		tracks = []interface{}{
+			// Track 0: Product video (CENTERED RIGHT, SMOOTH BLEND!)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "video",
+							"src":  productVideoURL,
+						},
+						"start":    0,
+						"length":   15,
+						"position": "center", // CENTER for better control
+						"offset": map[string]interface{}{
+							"x": 0.0, // TRUE CENTER horizontally!
+							"y": 0.0, // TRUE CENTER vertically!
+						},
+						"scale":   0.40, // 40% for better visibility
+						"opacity": 0.92, // Slightly transparent for natural blend
+						"fit":     "contain",
+						"transition": map[string]interface{}{
+							"in": "fade", // Smooth fade in
+						},
+					},
+				},
+			},
+			// Track 1: Avatar video (BACKGROUND - FULLSCREEN!)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "video",
+							"src":  avatarVideoURL,
+						},
+						"start":  0,
+						"length": 15,
+						"fit":    "cover", // Fullscreen background
+						"transition": map[string]interface{}{
+							"in": "fade",
+						},
+					},
+				},
+			},
+		}
+	} else if layout == "product_main" {
+		// PRODUCT_MAIN LAYOUT - Product fullscreen + Person in bottom-right corner
+		fmt.Printf("📐 Using PRODUCT MAIN layout: Product fullscreen + Person bottom-right\n")
+		fmt.Printf("   🎥 Product: Fullscreen background (cover fit)\n")
+		fmt.Printf("   👤 Person: Bottom-right corner overlay (30%% scale, always visible)\n")
+		tracks = []interface{}{
+			// Track 0: Product video (BACKGROUND LAYER - fullscreen)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "video",
+							"src":  productVideoURL,
+						},
+						"start":  0.0,
+						"length": 15.0,    // Full 15 seconds
+						"fit":    "cover", // Fullscreen - fills entire frame
+						"transition": map[string]interface{}{
+							"in": "fade",
+						},
+					},
+				},
+			},
+			// Track 1: Avatar video (TOP LAYER - bottom-right corner)
+			map[string]interface{}{
+				"clips": []interface{}{
+					map[string]interface{}{
+						"asset": map[string]interface{}{
+							"type": "video",
+							"src":  avatarVideoURL,
+						},
+						"start":  0.0,
+						"length": 15.0, // Full 15 seconds (will show for duration of avatar video)
+						"offset": map[string]interface{}{
+							"x": 0.35, // Right side (positive = right, 0.35 = 35% from center to right)
+							"y": 0.35, // Bottom side (positive = bottom, 0.35 = 35% from center to bottom)
+						},
+						"scale":   0.30,      // 30% of screen - small corner overlay
+						"opacity": 1.0,       // Fully opaque
+						"fit":     "contain", // Entire person visible
+						"transition": map[string]interface{}{
+							"in": "fade", // Smooth fade in
+						},
 					},
 				},
 			},
 		}
 	} else {
-		// Default: Product as main (fullscreen), Avatar as overlay
-		fmt.Printf("📐 Using layout: Product fullscreen + Avatar overlay\n")
+		// Default fallback: Same as PRODUCT_MAIN - Product fullscreen + Person in bottom-right corner
+		fmt.Printf("📐 Using PRODUCT CENTERED layout: Product fullscreen + Person bottom-right\n")
+		fmt.Printf("   🎥 Product: Fullscreen background (cover fit)\n")
+		fmt.Printf("   👤 Person: Bottom-right corner overlay (30%% scale, always visible)\n")
 		tracks = []interface{}{
-			// Track 1: Product video (main/background - fullscreen)
+			// Track 0: Product video (BACKGROUND LAYER - fullscreen)
 			map[string]interface{}{
 				"clips": []interface{}{
 					map[string]interface{}{
@@ -505,13 +957,16 @@ func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarV
 							"type": "video",
 							"src":  productVideoURL,
 						},
-						"start":  0,
-						"length": 15,
-						"fit":    "cover",
+						"start":  0.0,
+						"length": 15.0,    // Full 15 seconds
+						"fit":    "cover", // Fullscreen - fills entire frame
+						"transition": map[string]interface{}{
+							"in": "fade",
+						},
 					},
 				},
 			},
-			// Track 2: Avatar video (overlay in corner)
+			// Track 1: Avatar video (TOP LAYER - bottom-right corner)
 			map[string]interface{}{
 				"clips": []interface{}{
 					map[string]interface{}{
@@ -519,14 +974,18 @@ func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarV
 							"type": "video",
 							"src":  avatarVideoURL,
 						},
-						"start":    0,
-						"length":   15,
-						"position": "bottomRight",
+						"start":  0.0,
+						"length": 15.0, // Full 15 seconds (will show for duration of avatar video)
 						"offset": map[string]interface{}{
-							"x": -0.02,
-							"y": -0.02,
+							"x": 0.35, // Right side (positive = right, 0.35 = 35% from center to right)
+							"y": 0.35, // Bottom side (positive = bottom, 0.35 = 35% from center to bottom)
 						},
-						"scale": 0.25, // Avatar takes 25% of screen
+						"scale":   0.30,      // 30% of screen - small corner overlay
+						"opacity": 1.0,       // Fully opaque
+						"fit":     "contain", // Entire person visible
+						"transition": map[string]interface{}{
+							"in": "fade", // Smooth fade in
+						},
 					},
 				},
 			},
@@ -534,17 +993,46 @@ func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarV
 	}
 
 	// Create timeline for picture-in-picture layout
+	// NOTE: No background color - let the product video fill the frame naturally
 	timeline := map[string]interface{}{
 		"timeline": map[string]interface{}{
-			"background": "#000000",
-			"tracks":     tracks,
+			"tracks": tracks,
 		},
 		"output": map[string]interface{}{
 			"format":     "mp4",
 			"resolution": "hd",
 			"fps":        30,
+			"quality":    "medium", // Good balance of quality and file size
 		},
 	}
+
+	// Debug: Log track configuration
+	fmt.Printf("🎬 Shotstack Timeline Configuration:\n")
+	fmt.Printf("   Total tracks: %d\n", len(tracks))
+	if layout == "product_main" {
+		fmt.Printf("   ✅ PRODUCT MAIN: Fullscreen product + Person in bottom-right\n")
+		fmt.Printf("   Track 0 (bottom): Product video (fullscreen background, 15s)\n")
+		fmt.Printf("      URL: %s\n", productVideoURL)
+		fmt.Printf("      Fit: cover (fullscreen)\n")
+		fmt.Printf("   Track 1 (top): Avatar video (bottom-right corner, 30%% scale, 15s)\n")
+		fmt.Printf("      URL: %s\n", avatarVideoURL)
+		fmt.Printf("      Offset: x=0.35 (right), y=0.35 (bottom)\n")
+		fmt.Printf("      Scale: 0.30 (30%%)\n")
+		fmt.Printf("      Opacity: 1.0 (fully visible)\n")
+		fmt.Printf("      Fit: contain (preserve aspect ratio)\n")
+	} else if layout == "presenter" || layout == "split" || layout == "dual_highlight" || layout == "avatar_main" {
+		fmt.Printf("   Layout-specific tracks configured (see above)\n")
+	} else {
+		fmt.Printf("   Track 0 (bottom): Product video (fullscreen background, 15s)\n")
+		fmt.Printf("      URL: %s\n", productVideoURL)
+		fmt.Printf("   Track 1 (top): Avatar video (bottom-right corner, 30%% scale, 15s)\n")
+		fmt.Printf("      URL: %s\n", avatarVideoURL)
+		fmt.Printf("      Offset: x=0.35 (right), y=0.35 (bottom)\n")
+	}
+
+	// Log full timeline JSON for debugging
+	timelineJSON, _ := json.MarshalIndent(timeline, "", "  ")
+	fmt.Printf("\n📋 Full Shotstack Timeline JSON:\n%s\n", string(timelineJSON))
 
 	payloadBytes, _ := json.Marshal(timeline)
 
@@ -565,14 +1053,14 @@ func (vg *VideoGenerator) compositeVideosWithShotstack(productVideoPath, avatarV
 
 	resp, err := vg.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("Shotstack API request failed: %v", err)
+		return "", fmt.Errorf("shotstack API request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("Shotstack API error (%s): %s", resp.Status, string(bodyBytes))
+		return "", fmt.Errorf("shotstack API error (%s): %s", resp.Status, string(bodyBytes))
 	}
 
 	var result map[string]interface{}
@@ -640,15 +1128,110 @@ func (vg *VideoGenerator) pollShotstackRender(renderID string) (string, error) {
 			fmt.Printf("✅ Final video ready!\n")
 			return vg.downloadVideo(videoURL)
 		} else if status == "failed" {
-			return "", fmt.Errorf("Shotstack render failed")
+			return "", fmt.Errorf("shotstack render failed")
 		}
 	}
 
-	return "", fmt.Errorf("Shotstack render timeout")
+	return "", fmt.Errorf("shotstack render timeout")
 }
 
-// uploadToFileIO uploads a file to file.io for temporary public hosting
-func (vg *VideoGenerator) uploadToFileIO(filePath string) (string, error) {
+// uploadWithFallback tries multiple upload services with fallback
+func (vg *VideoGenerator) uploadWithFallback(filePath string) (string, error) {
+	fmt.Printf("📤 Trying to upload %s...\n", filepath.Base(filePath))
+
+	// Try tmpfiles.org (no blocks, reliable)
+	url, err := vg.uploadToTmpFiles(filePath)
+	if err == nil {
+		fmt.Printf("✅ Uploaded successfully to tmpfiles.org\n")
+		return url, nil
+	}
+	fmt.Printf("⚠️  tmpfiles.org failed: %v\n", err)
+
+	// Try file.io (alternative)
+	url, err = vg.uploadToFileIO_Alternative(filePath)
+	if err == nil {
+		fmt.Printf("✅ Uploaded successfully to file.io\n")
+		return url, nil
+	}
+	fmt.Printf("⚠️  file.io failed: %v\n", err)
+
+	// Try 0x0.st (might be blocked for your network)
+	url, err = vg.uploadToFileIO(filePath)
+	if err == nil {
+		fmt.Printf("✅ Uploaded successfully to 0x0.st\n")
+		return url, nil
+	}
+	fmt.Printf("⚠️  0x0.st failed: %v\n", err)
+
+	return "", fmt.Errorf("all upload services failed")
+}
+
+// uploadToTmpFiles uploads to tmpfiles.org (reliable, no blocks)
+func (vg *VideoGenerator) uploadToTmpFiles(filePath string) (string, error) {
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file: %v", err)
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	if err != nil {
+		return "", fmt.Errorf("failed to create form file: %v", err)
+	}
+
+	if _, err := part.Write(fileData); err != nil {
+		return "", fmt.Errorf("failed to write file data: %v", err)
+	}
+
+	writer.Close()
+
+	req, err := http.NewRequest("POST", "https://tmpfiles.org/api/v1/upload", body)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := vg.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("upload failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("upload returned %s: %s", resp.Status, string(bodyBytes[:min(200, len(bodyBytes))]))
+	}
+
+	// Parse JSON response
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return "", fmt.Errorf("failed to parse response: %v", err)
+	}
+
+	// Get the URL from response
+	data, ok := result["data"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid response format")
+	}
+
+	fileURL, ok := data["url"].(string)
+	if !ok {
+		return "", fmt.Errorf("no URL in response")
+	}
+
+	// tmpfiles.org returns URLs like https://tmpfiles.org/123456
+	// Need to convert to direct download: https://tmpfiles.org/dl/123456
+	fileURL = strings.Replace(fileURL, "tmpfiles.org/", "tmpfiles.org/dl/", 1)
+
+	return fileURL, nil
+}
+
+// uploadToFileIO_Alternative uploads to file.io (alternative service)
+func (vg *VideoGenerator) uploadToFileIO_Alternative(filePath string) (string, error) {
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %v", err)
@@ -677,24 +1260,167 @@ func (vg *VideoGenerator) uploadToFileIO(filePath string) (string, error) {
 
 	resp, err := vg.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("file.io upload failed: %v", err)
+		return "", fmt.Errorf("upload failed: %v", err)
 	}
 	defer resp.Body.Close()
 
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to parse file.io response: %v", err)
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("upload returned %s", resp.Status)
 	}
 
-	if success, ok := result["success"].(bool); !ok || !success {
-		return "", fmt.Errorf("file.io upload failed: %v", result)
+	// Parse JSON response
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return "", fmt.Errorf("failed to parse response: %v", err)
+	}
+
+	success, ok := result["success"].(bool)
+	if !ok || !success {
+		return "", fmt.Errorf("upload failed")
 	}
 
 	fileURL, ok := result["link"].(string)
 	if !ok {
-		return "", fmt.Errorf("no link in file.io response")
+		return "", fmt.Errorf("no URL in response")
 	}
 
+	return fileURL, nil
+}
+
+// uploadToShotstack uploads a file to Shotstack's asset storage
+func (vg *VideoGenerator) uploadToShotstack(filePath string) (string, error) {
+	fmt.Printf("📤 Uploading %s to Shotstack...\n", filepath.Base(filePath))
+
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file: %v", err)
+	}
+
+	fmt.Printf("   File size: %.2f MB\n", float64(len(fileData))/(1024*1024))
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	if err != nil {
+		return "", fmt.Errorf("failed to create form file: %v", err)
+	}
+
+	if _, err := part.Write(fileData); err != nil {
+		return "", fmt.Errorf("failed to write file data: %v", err)
+	}
+
+	writer.Close()
+
+	req, err := http.NewRequest("POST", "https://api.shotstack.io/v1/assets", body)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %v", err)
+	}
+
+	shotstackAPIKey := os.Getenv("SHOTSTACK_API_KEY")
+	if shotstackAPIKey == "" {
+		shotstackAPIKey = vg.config.ShotstackAPIKey
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("x-api-key", shotstackAPIKey)
+
+	resp, err := vg.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("shotstack upload failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		fmt.Printf("❌ Shotstack upload error (%s): %s\n", resp.Status, string(bodyBytes))
+		return "", fmt.Errorf("shotstack returned %s: %s", resp.Status, string(bodyBytes[:min(200, len(bodyBytes))]))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return "", fmt.Errorf("failed to parse Shotstack response: %v", err)
+	}
+
+	data, ok := result["data"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid Shotstack response format")
+	}
+
+	attributes, ok := data["attributes"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid Shotstack response attributes")
+	}
+
+	fileURL, ok := attributes["url"].(string)
+	if !ok {
+		return "", fmt.Errorf("no URL in Shotstack response")
+	}
+
+	fmt.Printf("✅ Upload complete: %s\n", fileURL)
+	return fileURL, nil
+}
+
+// uploadToFileIO uploads a file to 0x0.st for temporary public hosting
+func (vg *VideoGenerator) uploadToFileIO(filePath string) (string, error) {
+	fmt.Printf("📤 Uploading %s to 0x0.st...\n", filepath.Base(filePath))
+
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file: %v", err)
+	}
+
+	fmt.Printf("   File size: %.2f MB\n", float64(len(fileData))/(1024*1024))
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	if err != nil {
+		return "", fmt.Errorf("failed to create form file: %v", err)
+	}
+
+	if _, err := part.Write(fileData); err != nil {
+		return "", fmt.Errorf("failed to write file data: %v", err)
+	}
+
+	writer.Close()
+
+	// Use 0x0.st which is more reliable for temporary file hosting
+	req, err := http.NewRequest("POST", "https://0x0.st", body)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := vg.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("upload failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	// Check HTTP status
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("❌ Upload error (%s): %s\n", resp.Status, string(bodyBytes))
+		return "", fmt.Errorf("upload returned %s: %s", resp.Status, string(bodyBytes[:min(200, len(bodyBytes))]))
+	}
+
+	// 0x0.st returns the URL directly as plain text
+	fileURL := strings.TrimSpace(string(bodyBytes))
+
+	if fileURL == "" || !strings.HasPrefix(fileURL, "http") {
+		fmt.Printf("❌ Invalid URL response: %s\n", string(bodyBytes))
+		return "", fmt.Errorf("invalid URL in response: %s", string(bodyBytes[:min(100, len(bodyBytes))]))
+	}
+
+	fmt.Printf("✅ Upload complete: %s\n", fileURL)
 	return fileURL, nil
 }
 
@@ -775,17 +1501,21 @@ func (vg *VideoGenerator) GenerateFullAIPipeline(productImagePath, personMediaPa
 
 	// Set defaults
 	if productVideoStyle == "" {
-		productVideoStyle = "auto"
+		productVideoStyle = "cinematic" // Default: cinematic for MOST dynamic product showcase
 	}
 	if layout == "" {
-		layout = "product_main" // Default: product as main, avatar as overlay
+		layout = "product_main" // Default: product-centered with person in bottom-right corner
 	}
 
 	fmt.Printf("📋 Configuration:\n")
 	fmt.Printf("   Product Video Style: %s\n", productVideoStyle)
 	fmt.Printf("   Layout: %s\n", layout)
-	fmt.Printf("   (product_main = product fullscreen + avatar overlay)\n")
-	fmt.Printf("   (avatar_main = avatar fullscreen + product overlay)\n\n")
+	fmt.Printf("\n📐 Available Layouts:\n")
+	fmt.Printf("   • product_main   : Product fullscreen + Person bottom-right corner - ⭐ RECOMMENDED\n")
+	fmt.Printf("   • presenter      : Person (60%%) left + Product (40%%) right - for product explanation\n")
+	fmt.Printf("   • split          : Side-by-side 50/50 - balanced, professional\n")
+	fmt.Printf("   • dual_highlight : Person + Product both highlighted with borders - integrated, equal showcase\n")
+	fmt.Printf("   • avatar_main    : Avatar fullscreen + product overlay\n\n")
 
 	// Step 1: Generate talking avatar with D-ID
 	fmt.Printf("📍 STEP 1/3: Generating Talking Avatar with D-ID\n")
@@ -795,30 +1525,20 @@ func (vg *VideoGenerator) GenerateFullAIPipeline(productImagePath, personMediaPa
 	}
 	fmt.Printf("✅ STEP 1 COMPLETE: Avatar video saved at %s\n\n", avatarVideoPath)
 
-	// Step 2: Generate product video - try D-ID first, fallback to RunwayML
-	fmt.Printf("📍 STEP 2/3: Generating Product Video\n")
-	var productVideoPath string
+	// Step 2: Generate product video - USE ONLY RunwayML
+	fmt.Printf("📍 STEP 2/3: Generating Product Video with RunwayML ONLY\n")
+	fmt.Printf("   🎬 Using RunwayML Gen-3 for product video generation\n")
 
-	// Try D-ID first
-	fmt.Printf("   Attempting with D-ID...\n")
-	productVideoPath, err = vg.generateProductVideoWithDID(productImagePath, productVideoStyle)
+	productVideoPath, err := vg.generateProductVideoWithRunwayML(productImagePath, productVideoStyle)
 	if err != nil {
-		fmt.Printf("   ⚠️  D-ID product video failed: %v\n", err)
-		fmt.Printf("   🔄 Falling back to RunwayML...\n")
-		// Fallback to RunwayML
-		productVideoPath, err = vg.generateProductVideoWithRunwayML(productImagePath, productVideoStyle)
-		if err != nil {
-			return "", fmt.Errorf("step 2 failed (both D-ID and RunwayML failed): RunwayML error: %v", err)
-		}
-		fmt.Printf("   ✅ RunwayML product video generated successfully\n")
-	} else {
-		fmt.Printf("   ✅ D-ID product video generated successfully\n")
+		return "", fmt.Errorf("step 2 failed (RunwayML product video): %v", err)
 	}
+	fmt.Printf("   ✅ RunwayML product video generated successfully\n")
 	fmt.Printf("✅ STEP 2 COMPLETE: Product video saved at %s\n\n", productVideoPath)
 
 	// Step 3: Composite videos with Shotstack
 	fmt.Printf("📍 STEP 3/3: Compositing Videos with Shotstack\n")
-	finalVideoPath, err := vg.compositeVideosWithShotstack(productVideoPath, avatarVideoPath, layout)
+	finalVideoPath, err := vg.CompositeVideosWithShotstack(productVideoPath, avatarVideoPath, layout)
 	if err != nil {
 		return "", fmt.Errorf("step 3 failed (Shotstack compositing): %v", err)
 	}
@@ -842,18 +1562,23 @@ func (vg *VideoGenerator) generateAvatarOnly(personMediaPath, customScript strin
 	var sourceURL string
 	if personMediaPath != "" && (strings.HasSuffix(strings.ToLower(personMediaPath), ".png") ||
 		strings.HasSuffix(strings.ToLower(personMediaPath), ".jpg") ||
-		strings.HasSuffix(strings.ToLower(personMediaPath), ".jpeg")) {
-		fmt.Printf("📸 Uploading presenter image to D-ID...\n")
+		strings.HasSuffix(strings.ToLower(personMediaPath), ".jpeg") ||
+		strings.HasSuffix(strings.ToLower(personMediaPath), ".webp")) {
+		fmt.Printf("📸 Uploading YOUR presenter image to D-ID: %s\n", personMediaPath)
 		uploadedURL, err := vg.uploadToDID(personMediaPath)
 		if err != nil {
-			fmt.Printf("⚠️  D-ID upload failed: %v. Using default presenter.\n", err)
+			fmt.Printf("❌ ERROR: D-ID upload failed: %v\n", err)
+			fmt.Printf("⚠️  This is why default girl (Noelle) is showing! Fix the upload issue.\n")
+			fmt.Printf("📝 Falling back to default presenter for now...\n")
 			sourceURL = "https://create-images-results.d-id.com/api_docs/assets/noelle.jpeg"
 		} else {
 			sourceURL = uploadedURL
-			fmt.Printf("✅ Using custom presenter: %s\n", sourceURL)
+			fmt.Printf("✅ SUCCESS! Using YOUR custom presenter: %s\n", sourceURL)
 		}
 	} else {
-		fmt.Printf("📝 Using D-ID default presenter\n")
+		fmt.Printf("⚠️  WARNING: No valid image file at: %s\n", personMediaPath)
+		fmt.Printf("   Accepted formats: .png, .jpg, .jpeg, .webp\n")
+		fmt.Printf("📝 Using D-ID default presenter (Noelle)\n")
 		sourceURL = "https://create-images-results.d-id.com/api_docs/assets/noelle.jpeg"
 	}
 
@@ -867,7 +1592,7 @@ func (vg *VideoGenerator) generateAvatarOnly(personMediaPath, customScript strin
 		"input": videoScript,
 		"provider": map[string]interface{}{
 			"type":     "microsoft",
-			"voice_id": "en-US-JennyNeural", // Professional, clear voice
+			"voice_id": "en-US-GuyNeural", // Professional, clear male voice
 		},
 	}
 
@@ -875,9 +1600,10 @@ func (vg *VideoGenerator) generateAvatarOnly(personMediaPath, customScript strin
 		"source_url": sourceURL,
 		"script":     script,
 		"config": map[string]interface{}{
-			"fluent":    true,
-			"pad_audio": 0,
-			"stitch":    true, // Better video quality
+			"fluent":        true,
+			"pad_audio":     0,
+			"stitch":        true,  // Better video quality
+			"result_format": "mp4", // MP4 format (D-ID only supports mp4/mov)
 		},
 	}
 
@@ -889,7 +1615,7 @@ func (vg *VideoGenerator) generateAvatarOnly(personMediaPath, customScript strin
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi")
+	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:dK2lCEnxK6fw7PUMUSrJD")
 
 	fmt.Printf("📤 Calling D-ID API for avatar video...\n")
 
@@ -994,7 +1720,7 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 		"input": videoScript,
 		"provider": map[string]interface{}{
 			"type":     "microsoft",
-			"voice_id": "en-US-JennyNeural", // Professional, clear voice
+			"voice_id": "en-US-GuyNeural", // Professional, clear male voice
 		},
 	}
 
@@ -1002,9 +1728,10 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 		"source_url": sourceURL,
 		"script":     script,
 		"config": map[string]interface{}{
-			"fluent":    true,
-			"pad_audio": 0,
-			"stitch":    true, // Better video quality
+			"fluent":        true,
+			"pad_audio":     0,
+			"stitch":        true,  // Better video quality
+			"result_format": "mp4", // MP4 format (D-ID only supports mp4/mov)
 		},
 	}
 
@@ -1025,7 +1752,7 @@ func (vg *VideoGenerator) GenerateWithDIDLegacy(productImagePath, personMediaPat
 	req.Header.Set("User-Agent", "curl/7.88.1")
 	req.Header.Set("Accept", "*/*")
 	// D-ID API - EXACT key from Postman (copied from cURL line 3)
-	req.Header.Set("Authorization", "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi")
+	req.Header.Set("Authorization", "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:dK2lCEnxK6fw7PUMUSrJD")
 
 	// Log curl equivalent command
 	fmt.Printf("Curl equivalent:\n")
@@ -1118,7 +1845,7 @@ func (vg *VideoGenerator) GenerateWithSynthesia(productImagePath, customScript s
 func (vg *VideoGenerator) pollDIDTask(talkID string) (string, error) {
 	apiURL := fmt.Sprintf("https://api.d-id.com/talks/%s", talkID)
 	// Use same authorization as initial API call
-	authHeader := "Basic c2F1cmF2a3VtYXI1MjI3MEBnbWFpbC5jb20:QOLztE47n7PYPhjkblUGi"
+	authHeader := "Basic cmFrZXNoZGQ0NDU0QGdtYWlsLmNvbQ:dK2lCEnxK6fw7PUMUSrJD"
 
 	for i := 0; i < 60; i++ {
 		time.Sleep(5 * time.Second)

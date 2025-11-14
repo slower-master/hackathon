@@ -20,6 +20,12 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
+	// Check for Gemini API key
+	geminiKey := os.Getenv("GOOGLE_GEMINI_API_KEY")
+	if geminiKey == "" {
+		geminiKey = os.Getenv("GEMINI_API_KEY")
+	}
+
 	// Log configuration
 	log.Printf("=== Configuration ===")
 	log.Printf("AI Provider: %s", cfg.AIProvider)
@@ -29,6 +35,14 @@ func main() {
 		}
 		return "(not set)"
 	}())
+	
+	// Log Gemini status
+	if geminiKey != "" {
+		log.Printf("🤖 Google Gemini: ENABLED (%s...%s)", geminiKey[:8], geminiKey[len(geminiKey)-4:])
+	} else {
+		log.Printf("⚠️  Google Gemini: DISABLED (no API key found)")
+		log.Printf("   Set GOOGLE_GEMINI_API_KEY environment variable to enable AI script generation")
+	}
 	log.Printf("====================")
 
 	// Initialize database
